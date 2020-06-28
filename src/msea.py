@@ -90,7 +90,18 @@ class Domain :
     def __init__(self, projection) :
         self._projection = projection
         self._interior_curves = []
+        self._interior_points = []
         self._curves = []
+
+    def add_points(self,points,projection) :
+        points = np.asarray(points)
+        if not projection.IsSame(self._projection) :
+            logging.info("reprojecting coordinates")
+            points = osr.CoordinateTransformation(projection,self._projection).TransformPoints(points)
+            points = np.asarray(points)
+        if points.shape[1] == 2 :
+            points = np.column_stack([points,np.zeros((points.shape[0],1))])
+        self._interior_points.append(points)
 
     def add_curve(self, points, tag, projection, interior=False, curve_type=BSPLINE) :
         points = np.asarray(points)
@@ -110,7 +121,7 @@ class Domain :
     def build_topology(self) :
         # generate unique points
         curvesiter = itertools.chain(self._curves,self._interior_curves)
-        allpoints = np.row_stack([c.points for c in curvesiter])
+        allpoints = np.row_stack(itertools.chain((c.points for c in curvesiter),(p for p in self._interior_points)))
         tree = cKDTree(allpoints)
         unique_id = np.full([allpoints.shape[0]],-1,np.int32)
         epoints = np.row_stack([np.array([c.points[0],c.points[-1]]) for c in self._curves])
@@ -132,7 +143,7 @@ class Domain :
                 cid += 1
         self._points = np.ndarray([cid,3])
         self._points[unique_id,:] = allpoints
-        
+
         # assign points id in curves
         isendpoint = np.full([cid],False,bool)
         cid = 0
@@ -140,6 +151,9 @@ class Domain :
             n = c.points.shape[0]
             c._pointsid = unique_id[cid:cid+n]
             cid += n
+
+        # assign points id for interior points
+        self._interior_points_id = unique_id[cid:]
 
         # break curves on repeated points
         def split_curves(curves,nbk) :
@@ -151,7 +165,6 @@ class Domain :
                 else :
                     breaks = [0] + list(breaks+1) + [len(curve.points)-1]
                     for i,j in zip(breaks[:-1],breaks[1:]) :
-                        print("break",i,j)
                         ncurve = _Curve(curve.points[i:j+1],curve.tag,curve.curve_type)
                         ncurve._pointsid = curve._pointsid[i:j+1]
                         newcurves.append(ncurve)
@@ -162,6 +175,7 @@ class Domain :
         p2curve = np.full([self._points.shape[0],2,2],-1,int)
         curve2p = np.ndarray([len(self._curves),2],int)
         for icurve,c in enumerate(self._curves) :
+            print("curve",icurve, "from", c._pointsid[0],"to",c._pointsid[-1])
             curve2p[icurve,0] = c._pointsid[0]
             curve2p[icurve,1] = c._pointsid[-1]
             p0 = p2curve[c._pointsid[0]]
@@ -185,6 +199,7 @@ class Domain :
                     p = curve2p[i,(j+1)%2]
                     i,j = p2curve[p][0] if p2curve[p][0][0] != i else p2curve[p][1]
                     touched[i] = True
+                    assert(i!=-1)
                     count += 1
         except :
             raise ValueError("Invalid topology")
@@ -194,15 +209,31 @@ class Domain :
             bbox = np.max(lpts,axis=0)-np.min(lpts,axis=0)
             loopbboxarea[i] = bbox[0]*bbox[1]
         self._curveloops.insert(0,self._curveloops.pop(np.argmax(loopbboxarea)))
+        for cl in self._curveloops :
+            print ("/".join(str(self._curves[j]._pointsid[0])+" "+str(self._curves[j]._pointsid[1]) for j,o in cl))
+        #exit(0)
 
 
-    def _add_geometry(self,geometry,tag,projection,curve_type,interior) :
+    def _add_geometry(self,geometry,tag,projection,curve_type,interior,onlypoints=False) :
         if geometry.GetGeometryCount() != 0 :
             for subg in geometry :
-                self._add_geometry(subg,tag,projection,curve_type,interior)
+                self._add_geometry(subg,tag,projection,curve_type,interior,onlypoints)
             return
-        assert(geometry.GetGeometryType() == 2)
-        self.add_curve(geometry.GetPoints(),tag,projection,interior,curve_type)
+        if onlypoints :
+            self.add_points(geometry.GetPoints(),projection)
+        else :
+            assert(geometry.GetGeometryType() == 2)
+            self.add_curve(geometry.GetPoints(),tag,projection,interior,curve_type)
+
+    def add_interior_points(self, filename, physical_name_field=None) :
+        proj = osr.SpatialReference()
+        driver = ogr.GetDriverByName('ESRI Shapefile')
+        data = driver.Open(filename,0)
+        layer = data.GetLayer()
+        layerdef = layer.GetLayerDefn()
+        layerproj = layer.GetSpatialRef()
+        for i in layer :
+            self._add_geometry(i.geometry(),None,layerproj,None,None,True)
 
     def add_shapefile(self, filename, physical_name_field=None, interior=False, curve_type=POLYLINE) :
         proj = osr.SpatialReference()
@@ -263,6 +294,7 @@ def mesh_gmsh(domain,filename,mesh_size,version=4.0,gmsh_options={}) :
         physicals.setdefault(curve.tag,[]).extend(tags)
     gmsh.model.geo.synchronize()
     gmsh.model.mesh.embed(1,embeded,2,stag)
+    gmsh.model.mesh.embed(0,[i+1 for i in domain._interior_points_id],2,stag)
     it = 0
     for cl in domain._curveloops :
         for i,(l,o) in enumerate(cl) :
