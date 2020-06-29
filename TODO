@@ -1,0 +1,41 @@
+
+x boundary tags (manual)
+x boundary tags (shp fields)
+x lc outside domain
+x mesh size utils (distance)
+x setup.py
+x mesh size utils (geotiff)
+x convert msh_shp
+x interior curves
+x interior nodes
+x setup.py + c
+x unrefine geometry (unref)
+- x0,y0
+- sample size
+- clip circle
+- choose dim 2 or 3
+- check projections
+- check initial 1D size
+- check (improve ?) initial 2D mesh
+- physical names
+
+-----
+
+- debug option (save intermediate files)
+- improve code, pep compliance
+- docstring
+- exemples
+- error handling (in particular in build_topology, in gmsh mesh calls, order of operation)
+- logging
+- finalize package
+- git pages
+
+-----
+
+- preserve corners in unrefine
+- gmsh visualisation tools
+- smooth lc
+- fix geometry ? (osgeo)
+- strict polyline is slow
+- tolerance for points identification
+

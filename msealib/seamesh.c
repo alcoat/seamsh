@@ -272,10 +272,11 @@ static int hecmp(const void *p0, const void *p1) {
 
 static int *build_neighbours(int n_tri, const int *tri) {
   int *hedges = malloc(sizeof(int)*4*n_tri*3);
+  int ihe =0;
   for (int i = 0; i < n_tri; ++i) {
     const int *t = tri+i*3;
+    if (t[0]<0) continue;
     for (int j = 0; j < 3; ++j) {
-      int ihe = i*3+j;
       int *he = hedges + ihe*4;
       int j1 = (j+1)%3;
       if(t[j1] < t[j]) {
@@ -288,14 +289,15 @@ static int *build_neighbours(int n_tri, const int *tri) {
       }
       he[2] = i;
       he[3] = j;
+      ihe++;
     }
   }
-  qsort(hedges,n_tri*3,4*sizeof(int),hecmp);
+  qsort(hedges,ihe,4*sizeof(int),hecmp);
   int *neighbours = malloc(sizeof(int)*n_tri*3);
   for (int i = 0; i < n_tri*3; ++i) {
     neighbours[i] = -1;
   }
-  for (int i = 0; i+1<n_tri*3; ++i) {
+  for (int i = 0; i+1<ihe; ++i) {
     int *he0 = hedges+i*4;
     int *he1 = hedges+i*4+4;
     if (hecmp(he0,he1) == 0) {
@@ -308,58 +310,60 @@ static int *build_neighbours(int n_tri, const int *tri) {
   return neighbours;
 }
 
-static void extract_boundaries(const double *x_p, const int *vtag, int n_tri, const int *tri, const int *tri_color, const int *neighbours/*, std::map<int,std::string> boundary_names*/,double **xo, int *nxo, int **l, int *nl, int **ll, int *nll)
+static void extract_boundaries(const double *x_p, const int *vtag, int n_tri, const int *tri, const int *tri_color, /*, std::map<int,std::string> boundary_names*/double **xo, int *nxo, int **l, int *nl, int **ll, int *nll)
 {
+  // filter triangles
+  int n_tri_f = 0;
+  int *tri_f =  malloc(sizeof(int)*n_tri*3);
+  for (int i= 0; i < n_tri; ++i) {
+    if (tri[i*3] < 0 || tri_color[i] != 1) continue;
+    for (int j = 0; j < 3; ++j) {
+      tri_f[n_tri_f*3+j] = tri[i*3+j];
+    }
+    n_tri_f++;
+  }
+  int *neighbours = build_neighbours(n_tri_f,tri_f);
+  // walk
   *xo = NULL;
   *ll = NULL;
   *l = NULL;
   *nxo = 0, *nll = 0, *nl = 0;
-  //std::map<std::string,std::vector<int> > physicals;
-  char *touched = malloc(sizeof(char)*n_tri);
-  for (int i = 0; i < n_tri; ++i) {
+  int *touched = malloc(sizeof(int)*n_tri_f);
+  for(int i = 0; i < n_tri_f; ++i)
     touched[i] = 0;
-  }
-  for (int i=0;i<n_tri;i++){
-    const int *t = tri+3*i;
-    if(t[0] == -1 || tri_color[i] != 1 || touched[i]) continue;
-    for (int j=0; j<3; ++j) {
-      int neigh = neighbours[i*3+j];
-      if (neigh == -1 || tri_color[neigh]== 1 || touched[neigh]) continue;
-      int firstp = *nxo;
-      int firstpll = *nxo;
-      int firstl = *nl;
-      int firstv = t[j], curv = t[j];
+  for(int i = 0; i < n_tri_f; ++i){
+    if (touched[i] == 1) continue;
+    for (int j = 0; j<3; ++j) {
+      if(neighbours[i*3+j]>=0) continue;
+      int firstp = tri_f[i*3+j];
+      double *X = (double*)vector_push((void**)xo,nxo,sizeof(double)*2);
+      X[0] = x_p[firstp*2+0];
+      X[1] = x_p[firstp*2+1];
+      int curp = tri_f[i*3+(j+1)%3];
       int curt = i;
-      int iv = j;
-      int oldtag = -1;
-      do {
-        t = tri+3*curt;
-        touched[curt] = 1;
-        double *X = (double*)vector_push((void**)xo,nxo,sizeof(double)*2);
-        X[0] = x_p[curv*2+0];
-        X[1] = x_p[curv*2+1];
-        int tag = 1;//vtag[curv];
-        if (oldtag != -1 && oldtag != tag) {
-          firstp = *nxo-1;
-        }
-        oldtag = tag;
-        iv = (iv+1)%3;
-        curv = t[iv];
-        while(neighbours[curt*3+iv]!= -1 && tri_color[neighbours[curt*3+iv]] == 1) {
-          curt = neighbours[curt*3+iv];
-          iv = getid3(tri+curt*3,curv);
-        }
-      }while(curv != firstv);
-      //physicals[boundary_names[oldtag]].push_back(il);
       int *line = (int*)vector_push((void**)l,nl,3*sizeof(int));
-      line[0] = firstp;
-      line[1] = *nxo-1;
-      line[2] = firstpll;
-      int *lineloop = (int*)vector_push((void**)ll,nll,2*sizeof(int));
-      lineloop[0] = firstl;
-      lineloop[1] = *nl-1;
+      line[0] = (*nxo)-1;
+      touched[i] = 1;
+      while (curp != firstp) {
+        double *X = (double*)vector_push((void**)xo,nxo,sizeof(double)*2);
+        X[0] = x_p[curp*2+0];
+        X[1] = x_p[curp*2+1];
+        int p = getid3(tri_f+curt*3,curp);
+        while (neighbours[curt*3+p] >=0) {
+          curt = neighbours[curt*3+p]; 
+          p = getid3(tri_f+curt*3,curp);
+        }
+        touched[curt] = 1;
+        curp = tri_f[curt*3+(p+1)%3];
+      }
+      line[1] = (*nxo)-1;
+      line[2] = line[0];
+      break;
     }
   }
+  free(neighbours);
+  free(touched);
+  free(tri_f);
 }
 
 static void orient_triangles(const double *x, int n_tri, int *tri) {
@@ -384,7 +388,7 @@ static int find_triangle_containing_point(const double *x, int n_tri, const int 
     }
   }
   if(first==-1) {
-    printf("no triangle contains the first point\n");
+    printf("no triangle contains the first point %g %g\n",lon,lat);
     exit(1);
   }
   return first;
@@ -483,7 +487,7 @@ void gen_boundaries_from_points(int n_vertices, double *x, int *tag, int n_tri, 
   int *neigh = build_neighbours(n_tri,tri);
   int *tri_color = color_triangles(x,n_tri,tri,neigh,lon,lat,mesh_size);
   optimize_mesh(x, mesh_size, n_vertices, n_tri, tri, tri_color, neigh);
-  extract_boundaries(x, tag, n_tri, tri, tri_color, neigh/*, std::map<int,std::string> boundary_names*/,xo,  nxo, l,nl,ll,nll);
+  extract_boundaries(x, tag, n_tri, tri, tri_color/*, std::map<int,std::string> boundary_names*/,xo,  nxo, l,nl,ll,nll);
   free(tri_color);
   free(neigh);
 }
