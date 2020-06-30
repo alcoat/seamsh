@@ -97,11 +97,11 @@ class _Curve :
 
 class DistanceField :
 
-    def __init__(self, domain, sampling_sizes, tags=None) :
+    def __init__(self, domain, sampling_size, tags=None) :
         points = []
         for curve in domain._curves :
             if (tags is None) or (curve.tag in tags) :
-                points.append(curve.sample(0.01))
+                points.append(curve.sample(sampling_size))
         points = np.vstack(points)
         self._tree = cKDTree(points)
 
@@ -315,10 +315,11 @@ class Domain :
 
 def mesh_gmsh(domain,filename,mesh_size,version=4.0,gmsh_options={}) :
     nadapt = 3
+    nadapt1d = 4
     for curve in domain._curves :
         curve.mesh_size = mesh_size(curve.points)
     gmsh.option.setNumber("Mesh.CharacteristicLengthFromPoints",0)
-    gmsh.option.setNumber("Mesh.LcIntegrationPrecision",1e-1)
+    gmsh.option.setNumber("Mesh.LcIntegrationPrecision",1e-3)
     gmsh.option.setNumber("Mesh.CharacteristicLengthFactor",1)
     gmsh.option.setNumber("Mesh.CharacteristicLengthFromCurvature",0)
     gmsh.option.setNumber("Mesh.CharacteristicLengthExtendFromBoundary",0)
@@ -367,7 +368,7 @@ def mesh_gmsh(domain,filename,mesh_size,version=4.0,gmsh_options={}) :
     gmsh.model.setPhysicalName(2,stag,"domain")
     ## 1D mesh ##
     gmsh.model.mesh.generate(1)
-    for i in range(nadapt) :
+    for i in range(nadapt1d) :
         for (dim,tag) in gmsh.model.getEntities(1) :
             _,x,u = gmsh.model.mesh.getNodes(dim,tag,includeBoundary=True)
             size = mesh_size(x.reshape([-1,3]))
