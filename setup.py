@@ -26,7 +26,7 @@ setuptools.setup(
     include_package_data=True,
     url="https://www.migflow.be",
     packages=["msea"],
-    package_dir={"msea":"src"},
+    package_dir={"msea":"msea"},
     #ext_modules=[CMakeExtension("msealib")],
     #ext_modules=[setuptools.Extension("seameshlib",["seamesh.c"])],
     package_data={"msea":["*.so"]},
