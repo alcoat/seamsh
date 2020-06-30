@@ -97,10 +97,10 @@ class _Curve :
 
 class DistanceField :
 
-    def __init__(self, domain, tags) :
+    def __init__(self, domain, sampling_sizes, tags=None) :
         points = []
         for curve in domain._curves :
-            if curve.tag in tags :
+            if (tags is None) or (curve.tag in tags) :
                 points.append(curve.sample(0.01))
         points = np.vstack(points)
         self._tree = cKDTree(points)
@@ -270,9 +270,9 @@ class Domain :
     def clip_circle(self, center, radius, resolution) :
         pass
 
-    def unrefine_boundaries(self,x0,y0,mesh_size_cb) :
+    def unrefine_boundaries(self,x0,y0,sampling,mesh_size_cb) :
         #x = np.vstack(list(c.points for c in self._curves))
-        x = np.vstack(list(c.sample(0.001) for c in self._curves))
+        x = np.vstack(list(c.sample(sampling) for c in self._curves))
         x,_,_ = _generate_unique_points(x)
         x = np.copy(x[:,:2])
         #avoid cocircle points
