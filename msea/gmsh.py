@@ -20,7 +20,6 @@ def _gmsh_curve_geo(curve_type: CurveType, pointsid):
     elif curve_type == CurveType.BSPLINE:
         return [gmsh.model.geo.addBSpline(pts)]
     elif curve_type == CurveType.STRICTPOLYLINE:
-        print("STRICT POLYLINE !!!")
         pairs = zip(pts[:-1], pts[1:])
         return list(gmsh.model.geo.addLine(p0, p1) for p0, p1 in pairs)
     elif curve_type == CurveType.POLYLINE:
@@ -52,8 +51,7 @@ def _curve_sample(curve, lc):
 
 
 def mesh(domain: Domain, filename: str, mesh_size: MeshSizeCallback,
-         version: float = 4.0,
-         gmsh_options: typing.Dict[str, GmshOptionValue] = {}) -> None:
+         version: float = 4.0, intermediate_file_name: str = None) -> None:
     """ Use gmsh to generate a mesh from a geometry and a mesh size callback
 
     Args:
@@ -61,7 +59,9 @@ def mesh(domain: Domain, filename: str, mesh_size: MeshSizeCallback,
         filename: output mesh file (.msh)
         mesh_size: callbable prescribing the mesh element size
         version: msh file version (typically 2.0 or 4.0)
-        gmsh_options: additional options passed to gmsh
+        intermediate_file_name: if not None, save intermediate meshes to those
+            files for debugging purpose (suffixes and extensions will be
+            appended).
     """
 
     domain._build_topology()
@@ -123,24 +123,26 @@ def mesh(domain: Domain, filename: str, mesh_size: MeshSizeCallback,
     tag = gmsh.model.addPhysicalGroup(2, [stag])
     gmsh.model.setPhysicalName(2, stag, "domain")
     # 1D mesh
-    gmsh.model.mesh.generate(1)
     for i in range(nadapt1d):
+        gmsh.model.mesh.generate(1)
+        if intermediate_file_name is not None :
+            gmsh.write(intermediate_file_name+"_1d_"+str(i)+".msh")
         for (dim, tag) in gmsh.model.getEntities(1):
             _, x, u = gmsh.model.mesh.getNodes(dim, tag, True)
             size = mesh_size(x.reshape([-1, 3]), domain._projection)
             gmsh.model.mesh.setSizeAtParametricPoints(dim, tag, u, size)
-        print("pass ", i, nadapt)
         gmsh.model.mesh.clear()
-        gmsh.model.mesh.generate(1)
-    # gmsh.fltk.run()
-    # 2D mesh ##
-    initial_sampling = 0.1
     gmsh.model.mesh.generate(1)
-    gmsh.option.setNumber("Mesh.CharacteristicLengthMin", initial_sampling)
-    gmsh.option.setNumber("Mesh.CharacteristicLengthMax", initial_sampling)
+    if intermediate_file_name is not None :
+        gmsh.write(intermediate_file_name+"_1d.msh")
+    # 2D mesh ##
+    _, x, u = gmsh.model.mesh.getNodes()
+    x = x.reshape([-1,3])
+    initlc = np.linalg.norm(np.max(x,axis=0)-np.min(x,axis=0))/100
     gmsh.option.setNumber("Mesh.CharacteristicLengthExtendFromBoundary", 0)
-    gmsh.option.setNumber("Mesh.CharacteristicLengthFromParametricPoints",
-                          0)
+    gmsh.option.setNumber("Mesh.CharacteristicLengthFromParametricPoints", 0)
+    gmsh.option.setNumber("Mesh.CharacteristicLengthMin", initlc)
+    gmsh.option.setNumber("Mesh.CharacteristicLengthMax", initlc)
     gmsh.model.mesh.generate(2)
     gmsh.option.setNumber("Mesh.CharacteristicLengthMin", 0)
     gmsh.option.setNumber("Mesh.CharacteristicLengthMax", 1e22)
@@ -158,10 +160,11 @@ def mesh(domain: Domain, filename: str, mesh_size: MeshSizeCallback,
         data = np.column_stack([xnode, node_lc[tri]]).reshape([-1])
         gmsh.view.addListData(sf_view, "ST", tri.shape[0], data)
         gmsh.model.mesh.field.setNumber(bg_field, "ViewTag", sf_view)
+        if intermediate_file_name is not None :
+            gmsh.view.write(sf_view,intermediate_file_name+"_2d_"+str(i)+".pos")
         gmsh.model.mesh.generate(2)
         gmsh.view.remove(sf_view)
     gmsh.model.mesh.field.remove(bg_field)
-    gmsh.fltk.run()
     gmsh.option.setNumber("Mesh.MshFileVersion", version)
     gmsh.write(filename)
 
@@ -216,6 +219,5 @@ def convert_to_gis(input_filename: str, projection: osr.SpatialReference,
 
 
 @atexit.register
-def finalize():
-    print("finalizing")
+def _finalize():
     gmsh.finalize()
