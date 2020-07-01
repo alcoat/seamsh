@@ -8,7 +8,6 @@ Welcome to msea's documentation!
    :caption: Contents:
 
 
-
 * :ref:`genindex`
 
 ..

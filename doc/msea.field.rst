@@ -1,7 +1,7 @@
-msea.Field module
+msea.field module
 =================
 
-.. automodule:: msea.Field
+.. automodule:: msea.field
    :members:
    :undoc-members:
    :show-inheritance:
