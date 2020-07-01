@@ -1,13 +1,17 @@
 import gmsh
 import numpy as np
 import uuid
-from typing import Dict, Any, Union, Tuple
-
+import typing
 from .geometry import Domain, CurveType, MeshSizeCallback
+from osgeo import ogr, osr
+import os
+import struct
+import atexit
 
 gmsh.initialize()
 gmsh.option.setNumber("General.Terminal", 1)
-GmshOptionValue = Union[float,str,Tuple[float, float, float]]
+GmshOptionValue = typing.Union[float, str, typing.Tuple[float, float, float]]
+
 
 def _gmsh_curve_geo(curve_type: CurveType, pointsid):
     pts = list(i+1 for i in pointsid)
@@ -23,6 +27,7 @@ def _gmsh_curve_geo(curve_type: CurveType, pointsid):
         return [gmsh.model.geo.addPolyline(pts)]
     else:
         raise ValueError("unknown curve_type '%s'" % curve_type)
+
 
 def _curve_sample(curve, lc):
     gmsh.model.add(str(uuid.uuid4()))
@@ -47,7 +52,8 @@ def _curve_sample(curve, lc):
 
 
 def mesh(domain: Domain, filename: str, mesh_size: MeshSizeCallback,
-         version:float = 4.0, gmsh_options: Dict[str,GmshOptionValue] = {}):
+         version: float = 4.0,
+         gmsh_options: typing.Dict[str, GmshOptionValue] = {}) -> None:
     """ Use gmsh to generate a mesh from a geometry and a mesh size callback
 
     Args:
@@ -158,29 +164,34 @@ def mesh(domain: Domain, filename: str, mesh_size: MeshSizeCallback,
     gmsh.fltk.run()
     gmsh.option.setNumber("Mesh.MshFileVersion", version)
     gmsh.write(filename)
-    gmsh.finalize()
 
 
-def convet_to_gis(input_filename: str, output_filename: str):
+def convert_to_gis(input_filename: str, projection: osr.SpatialReference,
+        output_filename: str) ->None:
     """ Convert a triangular gmsh mesh into shapefile or geopackage.
 
     Args:
         input_filename : any mesh file readable by gmsh (typically
             a .msh file)
+        projection: the projection assigned to the output layer, mesh
+            files do not store any projection so neither checks nor
+            re-projection are performed.
         output_filename : shape file (.shp) or geopackage (.gpkg) file
     """
     gmsh.model.add(str(uuid.uuid4()))
-    gmsh.open(inputfn)
-    if outputfn.endswith(".shp"):
+    gmsh.open(input_filename)
+    if output_filename.endswith(".shp"):
         shpdriver = ogr.GetDriverByName('ESRI Shapefile')
-    elif outputfn.endswith(".gpkg"):
+    elif output_filename.endswith(".gpkg"):
         shpdriver = ogr.GetDriverByName('GPKG')
     else:
-        raise ValueError("Unknown file extension '" + outputfn+"'")
-    if os.path.exists(outputfn):
-        shpdriver.DeleteDataSource(outputfn)
-    out_data_source = shpdriver.CreateDataSource(outputfn)
-    out_layer = out_data_source.CreateLayer(outputfn, geom_type=ogr.wkbPolygon)
+        raise ValueError("Unknown file extension '" + output_filename+"'")
+    if os.path.exists(output_filename):
+        shpdriver.DeleteDataSource(output_filename)
+    out_data_source = shpdriver.CreateDataSource(output_filename)
+    out_layer = out_data_source.CreateLayer(output_filename,
+                                            geom_type=ogr.wkbPolygon,
+                                            srs=projection)
     out_layer.CreateField(ogr.FieldDefn("id", ogr.OFTInteger))
     id_field = out_layer.FindFieldIndex("id", 1)
 
@@ -202,3 +213,9 @@ def convet_to_gis(input_filename: str, output_filename: str):
         feat = None
     out_data_source.CommitTransaction()
     gmsh.model.remove()
+
+
+@atexit.register
+def finalize():
+    print("finalizing")
+    gmsh.finalize()

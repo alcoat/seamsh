@@ -3,7 +3,7 @@ import numpy as np
 from osgeo import osr, gdal
 from scipy.spatial import cKDTree
 import logging
-from typing import List 
+from typing import List
 import itertools
 from .gmsh import _curve_sample
 
@@ -25,7 +25,7 @@ class Distance:
     """
 
     def __init__(self, domain: Domain, sampling: float,
-            tags: List[str] = None):
+                 tags: List[str] = None):
         """
         Args:
             domain: a Domain object containing the set of curves
@@ -36,7 +36,7 @@ class Distance:
         points = []
         for curve in itertools.chain(domain._curves, domain._interior_curves):
             if (tags is None) or (curve.tag in tags):
-                points.append(_curve_sample(curve,sampling))
+                points.append(_curve_sample(curve, sampling))
         points = np.vstack(points)
         self._tree = cKDTree(points)
         self._projection = domain._projection

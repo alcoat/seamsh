@@ -7,7 +7,7 @@ import os
 import itertools
 import ctypes as c
 from enum import Enum
-from typing import Tuple,Callable,Any
+import typing
 
 
 libdir = os.path.dirname(os.path.realpath(__file__))
@@ -26,10 +26,13 @@ def _ensure_valid_points(x, pfrom, pto):
     if not pfrom.IsSame(pto):
         logging.warning("reprojecting coordinates !!!!!!!!!!!!! ")
         x = osr.CoordinateTransformation(pfrom, pto).TransformPoints(x)
-        x = np.asarray(x)[:,:2]
+        x = np.asarray(x)[:, :2]
     return x
 
-MeshSizeCallback = Callable[[np.ndarray, osr.SpatialReference],np.ndarray]
+
+MeshSizeCallback = typing.Callable[[np.ndarray, osr.SpatialReference],
+                                   np.ndarray]
+
 
 class CurveType(Enum):
     """ Determine how curves control points are interpolated. """
@@ -78,7 +81,7 @@ class _Curve:
 
 
 class Domain:
-    """ List the domain boundaries, forced mesh points and 
+    """ List the domain boundaries, forced mesh points and
     forced mesh lines. """
 
     def __init__(self, projection: osr.SpatialReference):
@@ -205,7 +208,7 @@ class Domain:
         for i in layer:
             phys = i.GetField(physfield) if physfield else "boundary"
             self._add_geometry(i.geometry(), phys, layerproj, curve_type,
-                    interior, points)
+                               interior, points)
 
     def add_interior_points(self, points: np.ndarray,
                             projection: osr.SpatialReference) -> None:
@@ -292,11 +295,14 @@ class Domain:
         self._add_shapefile(filename, physical_name_field, False, False,
                             curve_type)
 
+
 from .gmsh import _curve_sample
-def coarsen_boundaries(domain: Domain, x0:Tuple[float,float],
-                        x0projection: osr.SpatialReference,
-                        mesh_size: MeshSizeCallback,
-                        sampling: float) -> Domain:
+
+
+def coarsen_boundaries(domain: Domain, x0: typing.Tuple[float, float],
+                       x0projection: osr.SpatialReference,
+                       mesh_size: MeshSizeCallback,
+                       sampling: float) -> Domain:
     """ Create a new Domain with the same projection and coarsend coarsend
     boundaries.
 
@@ -315,10 +321,9 @@ def coarsen_boundaries(domain: Domain, x0:Tuple[float,float],
             target mesh element size, otherwise the coarsening algorithm will
             fail. This parameter will be removed (and determined automatically)
             in the future.
-    
     """
 
-    sampled = [_curve_sample(curve,sampling) for curve in domain._curves]
+    sampled = [_curve_sample(curve, sampling) for curve in domain._curves]
     x = np.vstack(list(sampled))
     x, _, _ = _generate_unique_points(x)
     x = np.copy(x[:, :2])
@@ -367,5 +372,6 @@ def coarsen_boundaries(domain: Domain, x0:Tuple[float,float],
                                    domain._projection,
                                    curve_type=CurveType.POLYLINE)
     return odomain
+
 
 __all__ = ["Domain", "CurveType", "coarsen_boundaries"]
