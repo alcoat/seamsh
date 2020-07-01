@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.9)
-project(seamesh C)
+project(msea C)
 add_library(msea SHARED
-  seamesh.c
+  msea.c
 )
