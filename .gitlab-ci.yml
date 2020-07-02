@@ -19,7 +19,7 @@
 # along with this program (see COPYING and COPYING.LESSER files).  If not, 
 # see <http://www.gnu.org/licenses/>.
 
-mseabuild :
+mseabuild-linux :
   image : immc/migflow-build:v0.6
   stage : build
   script:
@@ -32,13 +32,24 @@ mseabuild :
     - cp libmsea.so ../../msea
     - cd ../..
     - python3 setup.py bdist_wheel --plat-name=manylinux1_x86_64
+  artifacts:
+    paths:
+      - dist
+    expire_in: 1 day
+
+mseabuild-windows :
+  image : immc/migflow-build:v0.6
+  stage : build
+  script:
     # windows
-    #- mkdir build-mingw
-    #- cd build-mingw
-    #- cmake .. -DCMAKE_TOOLCHAIN_FILE=/cmake-mingw -DCMAKE_BUILD_TYPE=Release
-    #- make -j4
-    #- mv */*.dll */*.dll.a migflow
-    #- python3 setup.py bdist_wheel --plat-name=win_amd64 -d ../dist
+    - cd msealib
+    - mkdir build-mingw
+    - cd build-mingw
+    - cmake .. -DCMAKE_TOOLCHAIN_FILE=/cmake-mingw -DCMAKE_BUILD_TYPE=Release
+    - make -j4
+    - mv */*.dll */*.dll.a ../../msea
+    - cd ../..
+    - python3 setup.py bdist_wheel --plat-name=win_amd64 
     #- cd ..
     ## OSX
     #- mkdir build-osxcross
