@@ -66,13 +66,15 @@ mseabuild-osx :
       - dist
     expire_in: 1 day
 
-mftests :
+mseatest :
   image : immc/migflow-valid:v0.12
   stage : test
   script:
     - pip3 install --user dist/*manylinux1_x86_64*
-    - cd validation
-    - python3 mbtests.py        
+    - cd demo
+    - curl -O ftp://braque.mema.ucl.ac.be/msea/data-test-1.tar.gz
+    - tar xf data-test-1.tar.gz
+    - python3 testshp.py 
 
 mfdeploy-test :
   image : immc/migflow-build:v0.6
