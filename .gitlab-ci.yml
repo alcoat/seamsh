@@ -20,7 +20,7 @@
 # see <http://www.gnu.org/licenses/>.
 
 mseabuild-linux :
-  image : immc/migflow-build:v0.6
+  image : immc/msea-build:v0.1
   stage : build
   script:
     - cd msealib
@@ -37,7 +37,7 @@ mseabuild-linux :
     expire_in: 1 day
 
 mseabuild-windows :
-  image : immc/migflow-build:v0.6
+  image : immc/msea-build:v0.1
   stage : build
   script:
     - cd msealib
@@ -50,7 +50,7 @@ mseabuild-windows :
     - python3 setup.py bdist_wheel --plat-name=win_amd64 
 
 mseabuild-osx :
-  image : immc/migflow-build:v0.6
+  image : immc/msea-build:v0.1
   stage : build
   script:
     - cd msealib
@@ -67,7 +67,7 @@ mseabuild-osx :
     expire_in: 1 day
 
 mseatest :
-  image : immc/migflow-valid:v0.12
+  image : immc/mseavalid:v0.1
   stage : test
   script:
     - pip3 install --user dist/*manylinux1_x86_64*
@@ -75,7 +75,7 @@ mseatest :
     - python3 testshp.py 
 
 mfdeploy-test :
-  image : immc/migflow-build:v0.6
+  image : immc/msea-build:v0.1
   stage : deploy
   rules :
     - if: '$CI_COMMIT_TAG =~ /^w-.*$/'
