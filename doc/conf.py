@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.abspath('..'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'msea'
+project = 'seamsh'
 copyright = '2020, Jonathan Lambrechts'
 author = 'Jonathan Lambrechts'
 

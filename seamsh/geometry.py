@@ -12,11 +12,11 @@ import typing
 
 libdir = os.path.dirname(os.path.realpath(__file__))
 if platform.system() == "Windows":
-    libpath = os.path.join(libdir, "msea.dll")
+    libpath = os.path.join(libdir, "seamsh.dll")
 elif platform.system() == "Darwin":
-    libpath = os.path.join(libdir, "libmsea.dylib")
+    libpath = os.path.join(libdir, "libseamsh.dylib")
 else:
-    libpath = os.path.join(libdir, "libmsea.so")
+    libpath = os.path.join(libdir, "libseamsh.so")
 
 lib = c.CDLL(libpath)
 

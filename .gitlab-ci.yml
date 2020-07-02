@@ -19,16 +19,16 @@
 # along with this program (see COPYING and COPYING.LESSER files).  If not, 
 # see <http://www.gnu.org/licenses/>.
 
-mseabuild-linux :
-  image : immc/msea-build:v0.1
+seamshbuild-linux :
+  image : immc/seamsh-build:v0.1
   stage : build
   script:
-    - cd msealib
+    - cd seamshlib
     - mkdir build
     - cd build/
     - cmake .. -DCMAKE_BUILD_TYPE=Release
     - make
-    - cp libmsea.so ../../msea
+    - cp libseamsh.so ../../seamesh
     - cd ../..
     - python3 setup.py bdist_wheel --plat-name=manylinux1_x86_64
   artifacts:
@@ -36,29 +36,29 @@ mseabuild-linux :
       - dist
     expire_in: 1 day
 
-mseabuild-windows :
-  image : immc/msea-build:v0.1
+seamshbuild-windows :
+  image : immc/seamsh-build:v0.1
   stage : build
   script:
-    - cd msealib
+    - cd seamshlib
     - mkdir build-mingw
     - cd build-mingw
     - cmake .. -DCMAKE_TOOLCHAIN_FILE=/cmake-mingw -DCMAKE_BUILD_TYPE=Release
     - make
-    - mv *.dll *.dll.a ../../msea
+    - mv *.dll *.dll.a ../../seamsh
     - cd ../..
     - python3 setup.py bdist_wheel --plat-name=win_amd64 
 
-mseabuild-osx :
-  image : immc/msea-build:v0.1
+seamshbuild-osx :
+  image : immc/seamsh-build:v0.1
   stage : build
   script:
-    - cd msealib
+    - cd seamshlib
     - mkdir build-osxcross
     - cd build-osxcross
     - $(osxcross-conf) && cmake .. -DCMAKE_TOOLCHAIN_FILE=/osxcross/target/toolchain.cmake -DCMAKE_BUILD_TYPE=Release
     - make
-    - mv *.dylib ../../msea
+    - mv *.dylib ../../seamsh
     - cd ../../
     - python3 setup.py bdist_wheel --plat-name=macosx_10_9_x86_64
   artifacts:
@@ -66,8 +66,8 @@ mseabuild-osx :
       - dist
     expire_in: 1 day
 
-mseatest :
-  image : immc/msea-valid:v0.1
+seamshtest :
+  image : immc/seamsh-valid:v0.1
   stage : test
   script:
     - pip3 install --user dist/*manylinux1_x86_64*
@@ -76,7 +76,7 @@ mseatest :
     - python3 testshp.py 
 
 mfdeploy-test :
-  image : immc/msea-build:v0.1
+  image : immc/seamsh-build:v0.1
   stage : deploy
   rules :
     - if: '$CI_COMMIT_TAG =~ /^w-.*$/'
@@ -86,7 +86,7 @@ mfdeploy-test :
 
 
 mfdeploy :
-  image : immc/msea-build:v0.1
+  image : immc/seamsh-build:v0.1
   stage : deploy
   rules :
     - if: '$CI_COMMIT_TAG =~ /^v-.*$/'

@@ -16,7 +16,7 @@ if commit_tag and (commit_tag.startswith("v-") or commit_tag.startswith("w-")):
 
 
 setuptools.setup(
-    name="msea",
+    name="seamsh",
     version=version,
     author="Jonathan Lambrechts",
     author_email="jonathan.lambrechts@uclouvain.be",
@@ -25,11 +25,11 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     include_package_data=True,
     url="https://www.migflow.be",
-    packages=["msea"],
-    package_dir={"msea":"msea"},
-    #ext_modules=[CMakeExtension("msealib")],
-    #ext_modules=[setuptools.Extension("seameshlib",["seamesh.c"])],
-    package_data={"msea":["*.so","*.dll","*.dll.a","*.dylib"]},
+    packages=["seamsh"],
+    package_dir={"seamsh":"seamsh"},
+    #ext_modules=[CMakeExtension("seamshlib")],
+    #ext_modules=[setuptools.Extension("seamshlib",["seamsh.c"])],
+    package_data={"seamsh":["*.so","*.dll","*.dll.a","*.dylib"]},
     classifiers=[
         "Environment :: Console",
         "Development Status :: 4 - Beta",

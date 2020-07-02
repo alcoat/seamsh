@@ -1,5 +1,5 @@
-Welcome to msea's documentation!
-================================
+Welcome to seamsh's documentation!
+===================================
 
 .. include:: modules.rst
 

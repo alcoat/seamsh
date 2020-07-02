@@ -1,7 +1,7 @@
-msea.geometry module
+seamsh.field module
 ====================
 
-.. automodule:: msea.geometry
+.. automodule:: seamsh.field
    :members:
    :undoc-members:
    :show-inheritance:
