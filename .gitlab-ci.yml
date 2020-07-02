@@ -59,7 +59,7 @@ mseabuild-osx :
     - $(osxcross-conf) && cmake .. -DCMAKE_TOOLCHAIN_FILE=/osxcross/target/toolchain.cmake -DCMAKE_BUILD_TYPE=Release
     - make
     - mv *.dylib ../../msea
-      cd ../../
+    - cd ../../
     - python3 setup.py bdist_wheel --plat-name=macosx_10_9_x86_64
   artifacts:
     paths:
