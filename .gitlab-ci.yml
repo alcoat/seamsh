@@ -1,0 +1,82 @@
+# MigFlow - Copyright (C) <2010-2018>
+# <Universite catholique de Louvain (UCL), Belgium
+#  Universite de Montpellier, France>
+# 	
+# List of the contributors to the development of MigFlow: see AUTHORS file.
+# Description and complete License: see LICENSE file.
+# 	
+# This program (MigFlow) is free software: 
+# you can redistribute it and/or modify it under the terms of the GNU Lesser General 
+# Public License as published by the Free Software Foundation, either version
+# 3 of the License, or (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+# 
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program (see COPYING and COPYING.LESSER files).  If not, 
+# see <http://www.gnu.org/licenses/>.
+
+mseabuild :
+  image : immc/migflow-build:v0.6
+  stage : build
+  script:
+    - cd msealib
+    # linux
+    - mkdir build
+    - cd build/
+    - cmake .. -DCMAKE_BUILD_TYPE=Release
+    - make
+    - cp libmsealib.so ../msea
+    - cd ..
+    - python3 setup.py bdist_wheel --plat-name=manylinux1_x86_64
+    - cd ..
+    # windows
+    #- mkdir build-mingw
+    #- cd build-mingw
+    #- cmake .. -DCMAKE_TOOLCHAIN_FILE=/cmake-mingw -DCMAKE_BUILD_TYPE=Release
+    #- make -j4
+    #- mv */*.dll */*.dll.a migflow
+    #- python3 setup.py bdist_wheel --plat-name=win_amd64 -d ../dist
+    #- cd ..
+    ## OSX
+    #- mkdir build-osxcross
+    #- cd build-osxcross
+    #- $(osxcross-conf) && cmake .. -DCMAKE_TOOLCHAIN_FILE=/osxcross/target/toolchain.cmake -DCMAKE_BUILD_TYPE=Release
+
+    #- make -j4
+    #- python3 setup.py bdist_wheel --plat-name=macosx_10_9_x86_64 -d ../dist
+    #- cd ..
+  artifacts:
+    paths:
+      - dist
+    expire_in: 1 day
+
+mftests :
+  image : immc/migflow-valid:v0.12
+  stage : test
+  script:
+    - pip3 install --user dist/*manylinux1_x86_64*
+    - cd validation
+    - python3 mbtests.py        
+
+mfdeploy-test :
+  image : immc/migflow-build:v0.6
+  stage : deploy
+  rules :
+    - if: '$CI_COMMIT_TAG =~ /^w-.*$/'
+      when: always
+  script:
+    - twine upload --repository testpypi dist/* 
+
+
+mfdeploy :
+  image : immc/migflow-build:v0.6
+  stage : deploy
+  rules :
+    - if: '$CI_COMMIT_TAG =~ /^v-.*$/'
+      when: always
+  script:
+    - twine upload dist/* 
