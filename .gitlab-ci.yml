@@ -70,7 +70,7 @@ mseatest :
   image : immc/msea-valid:v0.1
   stage : test
   script:
-    - pip3 install --user dist/*manylinux1_x86_64*
+    - pip3 install --user --upgrade --user --no-cache-dir dist/*manylinux1_x86_64*
     - cd tests
     - python3 testshp.py 
 
