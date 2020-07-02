@@ -24,7 +24,6 @@ mseabuild-linux :
   stage : build
   script:
     - cd msealib
-    # linux
     - mkdir build
     - cd build/
     - cmake .. -DCMAKE_BUILD_TYPE=Release
@@ -41,25 +40,27 @@ mseabuild-windows :
   image : immc/migflow-build:v0.6
   stage : build
   script:
-    # windows
     - cd msealib
     - mkdir build-mingw
     - cd build-mingw
     - cmake .. -DCMAKE_TOOLCHAIN_FILE=/cmake-mingw -DCMAKE_BUILD_TYPE=Release
-    - make -j4
-    - ls
+    - make
     - mv *.dll *.dll.a ../../msea
     - cd ../..
     - python3 setup.py bdist_wheel --plat-name=win_amd64 
-    #- cd ..
-    ## OSX
-    #- mkdir build-osxcross
-    #- cd build-osxcross
-    #- $(osxcross-conf) && cmake .. -DCMAKE_TOOLCHAIN_FILE=/osxcross/target/toolchain.cmake -DCMAKE_BUILD_TYPE=Release
 
-    #- make -j4
-    #- python3 setup.py bdist_wheel --plat-name=macosx_10_9_x86_64 -d ../dist
-    #- cd ..
+mseabuild-osx :
+  image : immc/migflow-build:v0.6
+  stage : build
+  script:
+    - cd msealib
+    - mkdir build-osxcross
+    - cd build-osxcross
+    - $(osxcross-conf) && cmake .. -DCMAKE_TOOLCHAIN_FILE=/osxcross/target/toolchain.cmake -DCMAKE_BUILD_TYPE=Release
+    - make
+    - mv *.dylib ../../msea
+      cd ../../
+    - python3 setup.py bdist_wheel --plat-name=macosx_10_9_x86_64
   artifacts:
     paths:
       - dist
