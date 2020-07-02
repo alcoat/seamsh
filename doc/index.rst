@@ -1,5 +1,5 @@
 Welcome to seamsh's documentation!
-===================================
+==================================
 
 .. include:: modules.rst
 
