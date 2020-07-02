@@ -41,7 +41,7 @@ setuptools.setup(
         "Programming Language :: Python",
         "Topic :: Scientific/Engineering"
         ],
-    install_requires=["scipy"],
+    install_requires=["scipy","numpy","gdal","gmsh-dev"],
     python_requires='>=3.6'
 )
 
