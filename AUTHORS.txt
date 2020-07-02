@@ -1,0 +1,4 @@
+seamsh library has been developped by:
+===========================================
+
+Jonathan Lambrechts <jonathan.lambrechts@uclouvain.be>
