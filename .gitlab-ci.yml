@@ -28,7 +28,7 @@ seamshbuild-linux :
     - cd build/
     - cmake .. -DCMAKE_BUILD_TYPE=Release
     - make
-    - cp libseamsh.so ../../seamesh
+    - cp libseamsh.so ../../seamsh
     - cd ../..
     - python3 setup.py bdist_wheel --plat-name=manylinux1_x86_64
   artifacts:
