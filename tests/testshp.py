@@ -30,7 +30,7 @@ bath_field = msea.field.Raster("data/medit.tiff")
 dist_coast_field = msea.field.Distance(domain,100,["coast","island"])
 dist_porquerolles_field = msea.field.Distance(domain,20,["porquerolles"])
 #coarse = msea.geometry.coarsen_boundaries(domain,(8e5,4.68e6),domain_srs,mesh_size,20)
-msea.gmsh.mesh(domain,"data.msh",mesh_size,intermediate_file_name="log")
+msea.gmsh.mesh(domain,"test.msh",mesh_size,intermediate_file_name="log")
 msea.gmsh.convert_to_gis("test.msh",domain_srs,"test.gpkg")
 
 msea.gmsh.gmsh.model.add("test")
