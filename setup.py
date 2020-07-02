@@ -29,7 +29,7 @@ setuptools.setup(
     package_dir={"msea":"msea"},
     #ext_modules=[CMakeExtension("msealib")],
     #ext_modules=[setuptools.Extension("seameshlib",["seamesh.c"])],
-    package_data={"msea":["*.so"]},
+    package_data={"msea":["*.so","*.dll","*.dll.a"]},
     classifiers=[
         "Environment :: Console",
         "Development Status :: 4 - Beta",
