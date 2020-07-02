@@ -1,5 +1,5 @@
-msea package
-============
+seamsh package
+==============
 
 .. toctree::
    :maxdepth: 4

@@ -1,5 +1,5 @@
-msea
-====
+seamsh
+======
 
 .. toctree::
    :maxdepth: 4
