@@ -47,6 +47,7 @@ mseabuild-windows :
     - cd build-mingw
     - cmake .. -DCMAKE_TOOLCHAIN_FILE=/cmake-mingw -DCMAKE_BUILD_TYPE=Release
     - make -j4
+    - ls
     - mv *.dll *.dll.a ../../msea
     - cd ../..
     - python3 setup.py bdist_wheel --plat-name=win_amd64 
