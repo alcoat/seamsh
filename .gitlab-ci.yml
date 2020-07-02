@@ -29,7 +29,7 @@ mseabuild :
     - cd build/
     - cmake .. -DCMAKE_BUILD_TYPE=Release
     - make
-    - cp libmsealib.so ../msea
+    - cp libmsea.so ../msea
     - cd ..
     - python3 setup.py bdist_wheel --plat-name=manylinux1_x86_64
     - cd ..
