@@ -67,7 +67,7 @@ mseabuild-osx :
     expire_in: 1 day
 
 mseatest :
-  image : immc/mseavalid:v0.1
+  image : immc/msea-valid:v0.1
   stage : test
   script:
     - pip3 install --user dist/*manylinux1_x86_64*
@@ -85,7 +85,7 @@ mfdeploy-test :
 
 
 mfdeploy :
-  image : immc/migflow-build:v0.6
+  image : immc/msea-build:v0.1
   stage : deploy
   rules :
     - if: '$CI_COMMIT_TAG =~ /^v-.*$/'
