@@ -44,7 +44,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     include_package_data=True,
-    url="https://www.migflow.be",
+    url="https://git.immc.ucl.ac.be/jlambrechts/seamsh",
     packages=["seamsh"],
     package_dir={"seamsh":"seamsh"},
     #ext_modules=[CMakeExtension("seamshlib")],
@@ -52,7 +52,7 @@ setuptools.setup(
     package_data={"seamsh":["*.so","*.dll","*.dll.a","*.dylib","COPYING.txt","AUTHORS.txt","LICENSE.txt"]},
     classifiers=[
         "Environment :: Console",
-        "Development Status :: 4 - Beta",
+        "Development Status :: 3 - Alpha",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Operating System :: POSIX :: Linux",
         "Operating System :: Microsoft :: Windows",

@@ -19,7 +19,7 @@
 # see <http://www.gnu.org/licenses/>.
 
 seamshbuild-linux :
-  image : immc/seamsh-build:v0.1
+  image : immc/seamsh-build:v0.9
   stage : build
   script:
     - cd seamshlib
@@ -36,7 +36,7 @@ seamshbuild-linux :
     expire_in: 1 day
 
 seamshbuild-windows :
-  image : immc/seamsh-build:v0.1
+  image : immc/seamsh-build:v0.9
   stage : build
   script:
     - cd seamshlib
@@ -49,7 +49,7 @@ seamshbuild-windows :
     - python3 setup.py bdist_wheel --plat-name=win_amd64 
 
 seamshbuild-osx :
-  image : immc/seamsh-build:v0.1
+  image : immc/seamsh-build:v0.9
   stage : build
   script:
     - cd seamshlib
@@ -74,8 +74,27 @@ seamshtest :
     - cd tests
     - python3 testshp.py 
 
-mfdeploy-test :
-  image : immc/seamsh-build:v0.1
+pages:
+  image : immc/seamsh-build:v0.9
+  stage : deploy
+  script:
+    - cd seamshlib
+    - mkdir build
+    - cd build/
+    - cmake .. -DCMAKE_BUILD_TYPE=Release
+    - make
+    - cp libseamsh.so ../../seamsh
+    - cd ../../doc
+    - make html
+    - mv _build/html ../public
+  artifacts:
+    paths:
+      - public
+    expire_in: 1 day
+
+
+seamshdeploy-test :
+  image : immc/seamsh-build:v0.9
   stage : deploy
   rules :
     - if: '$CI_COMMIT_TAG =~ /^w-.*$/'
@@ -84,8 +103,8 @@ mfdeploy-test :
     - twine upload --repository testpypi dist/* 
 
 
-mfdeploy :
-  image : immc/seamsh-build:v0.1
+seamshdeploy :
+  image : immc/seamsh-build:v0.9
   stage : deploy
   rules :
     - if: '$CI_COMMIT_TAG =~ /^v-.*$/'

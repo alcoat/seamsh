@@ -22,7 +22,10 @@ copyright = '2020, Jonathan Lambrechts'
 author = 'Jonathan Lambrechts'
 
 # The full version, including alpha/beta/rc tags
-release = '0.1'
+version = "0.0.1"
+commit_tag = os.environ.get("CI_COMMIT_TAG")
+if commit_tag and (commit_tag.startswith("v-") or commit_tag.startswith("w-")):
+    version = commit_tag[2:]
 
 
 # -- General configuration ---------------------------------------------------
