@@ -20,9 +20,10 @@ domain = seamsh.geometry.Domain(domain_srs)
 # %%
 # Boundary curves are created from a list of control points, an osr projection,
 # a physical tag and a curve type. If the projection does not match the domain's
-# projection, the points are re-projected conversion is done.
+# projection, the points are re-projected.
+#
 # A STRICTPOLYLINE curve linearly interpolates control points and forces a mesh
-# on each control point.
+# point on each control point.
 
 domain.add_boundary_curve([[0,0],[-0.2,0.25],[-0.2,0.75],[0,1]],
         "wall0",domain_srs,curve_type=CurveType.STRICTPOLYLINE)
@@ -42,13 +43,13 @@ domain.add_boundary_curve([[0,0],[0.25,-0.2],[0.75,-0.2],[1,0]],
 
 # %%
 # A BSPLINE is smoother than a SPLINE but the control points are not on the
-# curves.
+# curve.
 
 domain.add_boundary_curve([[1,1],[1.2,0.75],[1.2,0.25],[1,0]],
         "wall3",domain_srs,curve_type=CurveType.BSPLINE)
 
 # %%
-# If the last point is the same as the first point, a periodic curve is
+# If the last point is the same as the first one, a periodic curve is
 # created.
 
 domain.add_boundary_curve([[0.4,0.6],[0.6,0.6],[0.6,0.4],[0.4,0.4],[0.4,0.6]],
@@ -57,7 +58,7 @@ domain.add_boundary_curve([[0.4,0.6],[0.6,0.6],[0.6,0.4],[0.4,0.4],[0.4,0.6]],
 # %%
 # Interior curves are meshed on both sides, they do not define the domain
 # boundaries but forces edge alignment and mesh points. When an interior curve
-# can touch a boundary or another interior curve, a control point should be 
+# touch a boundary or another interior curve, a control point should be 
 # present in both curves at the intersection.
 
 domain.add_interior_curve([[-0.2,0.75],[0.1,0.6],[0.2,0.4],[0.1,0.4]],

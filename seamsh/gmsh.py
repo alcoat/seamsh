@@ -72,7 +72,7 @@ def _curve_sample(curve, lc):
 
 def mesh(domain: Domain, filename: str, mesh_size: MeshSizeCallback,
          version: float = 4.0, intermediate_file_name: str = None) -> None:
-    """ Use gmsh to generate a mesh from a geometry and a mesh size callback
+    """ Calls gmsh to generate a mesh from a geometry and a mesh size callback
 
     Args:
         domain: the input geometry
@@ -195,14 +195,14 @@ def mesh(domain: Domain, filename: str, mesh_size: MeshSizeCallback,
 
 def convert_to_gis(input_filename: str, projection: osr.SpatialReference,
         output_filename: str) ->None:
-    """ Convert a triangular gmsh mesh into shapefile or geopackage.
+    """ Converts a triangular gmsh mesh into shapefile or geopackage.
 
     Args:
         input_filename : any mesh file readable by gmsh (typically
             a .msh file)
         projection: the projection assigned to the output layer, mesh
             files do not store any projection so neither checks nor
-            re-projection are performed.
+            re-projections are performed.
         output_filename : shape file (.shp) or geopackage (.gpkg) file
     """
     gmsh.model.add(str(uuid.uuid4()))

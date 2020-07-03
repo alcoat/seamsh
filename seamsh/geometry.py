@@ -258,7 +258,7 @@ class Domain:
     def add_interior_curve(self, points: np.ndarray, physical_tag: str,
                            projection: str,
                            curve_type: CurveType = CurveType.POLYLINE) -> None:
-        """ Add a tagged curve inside the domain. The curve
+        """ Adds a tagged curve inside the domain. The curve
         is not part of the domain boundary and will be meshed on both sides.
 
         Args:
@@ -273,11 +273,11 @@ class Domain:
 
     def add_interior_points_shp(self, filename: str,
                                 physical_name_field: str = None) -> None:
-        """Add all points of a shape file as forced mesh points.
+        """ Adds all points of a shape file as forced mesh points.
 
         Args:
             filename: path to a shapefile.
-            physical_name_field: name of and attribute string field with the
+            physical_name_field: name of an attribute string field with the
                 curves physical tags
         """
         self._add_shapefile(filename, physical_name_field, None, True, None)
@@ -286,7 +286,7 @@ class Domain:
                                 physical_name_field: str = None,
                                 curve_type: CurveType = CurveType.POLYLINE
                                 ) -> None:
-        """Add all lines, polylines and polygons of a shape file as forced
+        """Adds all lines, polylines and polygons of a shape file as forced
         interior mesh lines
 
         Args:
@@ -302,13 +302,13 @@ class Domain:
                                 physical_name_field: str = None,
                                 curve_type: CurveType = CurveType.POLYLINE
                                 ) -> None:
-        """ Add all lines, polylines and polygons of a shapefile as domain
+        """ Adds all lines, polylines and polygons of a shapefile as domain
         boundaries
 
         Args:
             filename: path to a shapefile.
-            physical_name_field: name of and attribute string field with the
-                curves physical tags
+            physical_name_field: name of an attribute string field containing
+                the curves physical tags
             curve_type: curves interpolation
         """
         self._add_shapefile(filename, physical_name_field, False, False,
@@ -322,16 +322,16 @@ def coarsen_boundaries(domain: Domain, x0: typing.Tuple[float, float],
                        x0projection: osr.SpatialReference,
                        mesh_size: MeshSizeCallback,
                        sampling: float) -> Domain:
-    """ Create a new Domain with the same projection and coarsend coarsend
+    """ Creates a new Domain with the same projection and coarsened
     boundaries.
 
-    For the moment, the physical tags are not transfered to the new Domain,
+    For the moment, the physical tags are not transferred to the new Domain,
     this will be implemented in the future.
 
     Args:
         domain: the domain to coarsen
         x0: the coordinates of one point inside the domain.
-        x0projection: the coordinates system of x0, for now, this parameter
+        x0projection: the coordinates system of x0. For now, this parameter
             is ignored and the x0 should be in the same coordinate system
             as the domain.
         mesh_size: a function returning the desired mesh element size for given

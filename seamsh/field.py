@@ -62,7 +62,7 @@ class Distance:
 
     def __call__(self, x: np.ndarray, projection: osr.SpatialReference
                  ) -> np.ndarray:
-        """Compute the distance between each point of x and the curves.
+        """Computes the distance between each point of x and the curves.
 
         Args:
             x: the points [n,2]
@@ -96,7 +96,7 @@ class Raster:
 
     def __call__(self, x: np.ndarray, projection: osr.SpatialReference
                  ) -> np.ndarray:
-        """Evaluate the field value on each point of x.
+        """Evaluates the field value on each point of x.
 
         Keyword arguments:
             x: the points [n,2]

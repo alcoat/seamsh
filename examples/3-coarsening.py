@@ -14,7 +14,7 @@
 # 
 # But for now, the coarsening algorithm presents several limitations:
 #   - The physical tags are lost (this will be fixed soon).
-#   - Interior curves hare not handled, they can be present as long as they
+#   - Interior curves are not handled, they can be present as long as they
 #     do not intersect the domain boundaries (external and islands) but they
 #     won't be coarsened.
 #
@@ -51,14 +51,14 @@ def mesh_size(x,projection) :
 
 # %%
 # The geometry.coarsen_boundaries function requires in input the coordinates of one (any)
-# point which inside the domain. The last parameters should be at least two times smaller
+# point which is inside the domain. The last parameters should be at least two times smaller
 # than the smallest value returned by the mesh_size callback, otherwise the resulting
 # geometry will be invalid.
 
 coarse = seamsh.geometry.coarsen_boundaries(domain,(8e5,4.68e6),domain_srs,mesh_size,20)
 
 # %%
-# The resulting coarsend domain can be meshed normally.
+# The resulting coarsened domain can be meshed normally.
 
 seamsh.gmsh.mesh(coarse,"coarse_boundary_mesh.msh",mesh_size)
 

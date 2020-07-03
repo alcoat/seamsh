@@ -1,10 +1,10 @@
 # %%
 # GIS Data
 # ========
-# This example illustrates how to insert different types of curves
+# This example illustrates how the lirbary interacts with various GIS file formats.
 # directly from numpy arrays and osr spatial references.
 # 
-# For the sake of this example we, start by downloading some data.
+# For the sake of this example, we start by downloading some data.
 
 import os
 import urllib.request
@@ -33,7 +33,7 @@ domain_srs.ImportFromProj4("+proj=utm +ellps=WGS84 +zone=31")
 domain = seamsh.geometry.Domain(domain_srs)
 
 # %%
-# We load all curves from a given ESTRI shapefile as POLYLINEs.
+# We load all curves from a given ESTRI shapefile as polylines.
 # In the shapefile, a field named "physical" defines the physical tag of each
 # curve. If a re-projection is required, it will be done automatically.
 
@@ -48,21 +48,21 @@ domain.add_interior_curves_shp("data/interior.shp",None,CurveType.STRICTPOLYLINE
 # %%
 # Seamsh provides helper classes to compute the element size field.
 #
-# field.Raster allows to load geotiff files (or any raster file supported by gdal)
+# field.Raster allows to load geotiff files (or any raster file supported by gdal).
 
 bath_field = seamsh.field.Raster("data/medit.tiff")
 
 # %%
-# field.Distance can be used to compute the distance from given (tagged) boundaries,
-# a first field returns the distance from boundaries with physical tag "coast", or 
+# field.Distance can be used to compute the distance from given (tagged) boundaries.
+# A first field returns the distance from boundaries with physical tag "coast", or 
 # "island". The curves are sampled at regular intervals and the computed distance is 
-# actually the distance from the closest sampling point. The second argument compute
+# actually the distance from the closest sampling point. The second argument sets
 # the length of the interval between the sampling points.
 
 dist_coast_field = seamsh.field.Distance(domain,100,["coast","island"])
 
 # %%
-# A second distance fields return the distance from the island tagged "porquerolles",
+# A second distance field returns the distance from the island tagged "porquerolles",
 # in the shp file.
 
 dist_porquerolles_field = seamsh.field.Distance(domain,20,["porquerolles"])
@@ -78,7 +78,7 @@ def mesh_size(x,projection) :
     return s_dist
 
 # %%
-# another option would be to take a mesh size proportional to the square root
+# Another option would be to take a mesh size proportional to the square root
 # of the (clipped) bathymetry :
 
 # def mesh_size(x,projection) :
@@ -95,7 +95,7 @@ def mesh_size(x,projection) :
 seamsh.gmsh.mesh(domain,"gis_mesh.msh",mesh_size,intermediate_file_name="debug")
 
 # %%
-# the gmsh.convert_to_gis function can be used to convert a gmsh .msh file
-# in a shape file or a geo package file.
+# The gmsh.convert_to_gis function can be used to convert a gmsh .msh file
+# into a shape file or into a geo package file.
 
 seamsh.gmsh.convert_to_gis("gis_mesh.msh",domain_srs,"gis_mesh.gpkg")

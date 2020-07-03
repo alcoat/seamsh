@@ -49,7 +49,7 @@ seamsh.gmsh.gmsh.option.setNumber("Mesh.RecombinationAlgorithm",1);
 seamsh.gmsh.gmsh.option.setNumber("Mesh.Algorithm",8);
 
 # %%
-# Then the mesh is generated.
+# Eventually the mesh is generated.
 
 seamsh.gmsh.mesh(coarse,"quad_mesh.msh",mesh_size)
 
