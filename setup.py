@@ -24,7 +24,6 @@ import os
 
 with open("Readme.rst", "r") as fh:
     long_description = fh.read()
-long_description_content_type = "text/x-rst" 
 
 version = "0.0.2"
 commit_tag = os.environ.get("CI_COMMIT_TAG")
@@ -41,13 +40,11 @@ setuptools.setup(
     author_email="jonathan.lambrechts@uclouvain.be",
     description="Ocean mesh generation",
     long_description=long_description,
-    long_description_content_type="text/markdown",
+    long_description_content_type = "text/x-rst",
     include_package_data=True,
     url="https://git.immc.ucl.ac.be/jlambrechts/seamsh",
     packages=["seamsh"],
     package_dir={"seamsh":"seamsh"},
-    #ext_modules=[CMakeExtension("seamshlib")],
-    #ext_modules=[setuptools.Extension("seamshlib",["seamsh.c"])],
     package_data={"seamsh":["*.so","*.dll","*.dll.a","*.dylib","COPYING.txt","AUTHORS.txt","LICENSE.txt"]},
     classifiers=[
         "Environment :: Console",
