@@ -1,5 +1,7 @@
-Welcome to seamsh's documentation!
-==================================
+Seamsh Documentation
+====================
+
+.. include:: ../Readme.rst
 
 .. include:: demo.rst
 

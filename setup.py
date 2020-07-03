@@ -22,12 +22,11 @@ import setuptools
 import sys
 import os
 
-#with open("README.md", "r") as fh:
-#    long_description = fh.read()
+with open("Readme.rst", "r") as fh:
+    long_description = fh.read()
+long_description_content_type = "text/x-rst" 
 
-long_description =''
-
-version = "0.0.1"
+version = "0.0.2"
 commit_tag = os.environ.get("CI_COMMIT_TAG")
 if commit_tag and (commit_tag.startswith("v-") or commit_tag.startswith("w-")):
     version = commit_tag[2:]
