@@ -44,7 +44,6 @@ lib = c.CDLL(libpath)
 def _ensure_valid_points(x, pfrom, pto):
     x = np.asarray(x)[:, :2]
     if not pfrom.IsSame(pto):
-        logging.warning("reprojecting coordinates !!!!!!!!!!!!! ")
         x = osr.CoordinateTransformation(pfrom, pto).TransformPoints(x)
         x = np.asarray(x)[:, :2]
     return x

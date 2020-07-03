@@ -81,7 +81,9 @@ def mesh(domain: Domain, filename: str, mesh_size: MeshSizeCallback,
         version: msh file version (typically 2.0 or 4.0)
         intermediate_file_name: if not None, save intermediate meshes to those
             files for debugging purpose (suffixes and extensions will be
-            appended).
+            appended), if == "-", an interactive gmsh graphical window will pop up
+            after each meshing step.
+
     """
 
     domain._build_topology()
@@ -107,7 +109,7 @@ def mesh(domain: Domain, filename: str, mesh_size: MeshSizeCallback,
             curve = domain._curves[l]
             tags = _gmsh_curve_geo(curve.curve_type, curve.pointsid)
             physicals.setdefault(curve.tag, []).extend(tags)
-            ctag.extend(tags)
+            ctag.extend(tags if o else list(-t for t in reversed(tags)))
         cltag.append(gmsh.model.geo.addCurveLoop(ctag))
         ctags += ctag
     stag = gmsh.model.geo.addPlaneSurface(cltag)
@@ -125,18 +127,11 @@ def mesh(domain: Domain, filename: str, mesh_size: MeshSizeCallback,
         for i, (l, o) in enumerate(cl):
             curve = domain._curves[l]
             sizes = curve.mesh_size if o else np.flip(curve.mesh_size)
-            u0, u1 = gmsh.model.getParametrizationBounds(1, ctags[it])
+            u0, u1 = gmsh.model.getParametrizationBounds(1, abs(ctags[it]))
             u = np.linspace(u0, u1, curve.points.shape[0])
             gmsh.model.mesh.setSizeAtParametricPoints(
                 1, ctags[it], u, sizes)
             it += 1
-            """
-            elif curve.curve_type == STRICTPOLYLINE:
-                for j in range(curve.points.shape[0]-1):
-                    gmsh.model.mesh.setSizeAtParametricPoints(
-                        1, ctags[it], [0, 1], [sizes[j], sizes[j+1]])
-                    it += 1
-            """
     for name, tags in physicals.items():
         tag = gmsh.model.addPhysicalGroup(1, tags)
         gmsh.model.setPhysicalName(1, tag, name)
@@ -154,7 +149,10 @@ def mesh(domain: Domain, filename: str, mesh_size: MeshSizeCallback,
         gmsh.model.mesh.clear()
     gmsh.model.mesh.generate(1)
     if intermediate_file_name is not None :
-        gmsh.write(intermediate_file_name+"_1d.msh")
+        if intermediate_file_name == "-" :
+            gmsh.fltk.run()
+        else :
+            gmsh.write(intermediate_file_name+"_1d.msh")
     # 2D mesh ##
     _, x, u = gmsh.model.mesh.getNodes()
     x = x.reshape([-1,3])
@@ -174,14 +172,20 @@ def mesh(domain: Domain, filename: str, mesh_size: MeshSizeCallback,
         nodes_map = dict({tag: i for i, tag in enumerate(node_tags)})
         sf_view = gmsh.view.add("mesh size field")
         node_lc = mesh_size(node_x, domain._projection)
-        tri = gmsh.model.mesh.getElements(2, stag)[2][0]
-        tri = np.array(list(nodes_map[t] for t in tri)).reshape([-1, 3])
-        xnode = node_x[tri, :].swapaxes(1, 2).reshape([-1, 9])
-        data = np.column_stack([xnode, node_lc[tri]]).reshape([-1])
-        gmsh.view.addListData(sf_view, "ST", tri.shape[0], data)
+        etypes,etags,enodes = gmsh.model.mesh.getElements(2, stag)
+        for etype,enode in zip(etypes,enodes):
+            nn = 3 if etype == 2 else 4
+            enode = list(nodes_map[t] for t in enode)
+            enode = np.array(enode).reshape([-1, nn])
+            xnode = node_x[enode, :].swapaxes(1, 2).reshape([-1, nn*3])
+            data = np.column_stack([xnode, node_lc[enode]]).reshape([-1])
+            gmsh.view.addListData(sf_view, "ST"if etype == 2 else "SQ", enode.shape[0], data)
         gmsh.model.mesh.field.setNumber(bg_field, "ViewTag", sf_view)
         if intermediate_file_name is not None :
-            gmsh.view.write(sf_view,intermediate_file_name+"_2d_"+str(i)+".pos")
+            if intermediate_file_name == "-" :
+                gmsh.fltk.run()
+            else :
+                gmsh.view.write(sf_view,intermediate_file_name+"_2d_"+str(i)+".pos")
         gmsh.model.mesh.generate(2)
         gmsh.view.remove(sf_view)
     gmsh.model.mesh.field.remove(bg_field)

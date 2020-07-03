@@ -20,7 +20,7 @@ for filename in glob.glob("../examples/*.py") :
                     inrst = True
                     fout.write("\n")
                     continue
-                if (not lstrip and inrst) or i == 0:
+                if (not lstrip and inrst) or i == 0 or (inrst and lstrip[0] != '#'):
                     fout.write("\n.. code-block:: python\n  \n")
                     inrst = False
                     continue

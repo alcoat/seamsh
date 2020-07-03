@@ -31,7 +31,6 @@ from .gmsh import _curve_sample
 def _ensure_valid_points(x, pfrom, pto):
     x = np.asarray(x)[:, :2]
     if not pfrom.IsSame(pto):
-        logging.info("reprojecting coordinates")
         x = osr.CoordinateTransformation(pfrom, pto).TransformPoints(x)
         x = np.asarray(x)
     return x
@@ -92,7 +91,8 @@ class Raster:
         self._data = src_ds.GetRasterBand(1).ReadAsArray()
         assert(self._geo_matrix[2] == 0.)
         assert(self._geo_matrix[4] == 0.)
-        self._projection = src_ds.GetProjection()
+        self._projection = osr.SpatialReference()
+        self._projection.ImportFromWkt(src_ds.GetProjection())
 
     def __call__(self, x: np.ndarray, projection: osr.SpatialReference
                  ) -> np.ndarray:
@@ -104,7 +104,7 @@ class Raster:
         Returns:
             The field value on points x. [n]
         """
-        x = _ensure_valid_points(x, projection, self._proection)
+        x = _ensure_valid_points(x, projection, self._projection)
         gm = self._geo_matrix
         xi = (x[:, 0]-gm[3])/gm[5]
         eta = (x[:, 1]-gm[0])/gm[1]

@@ -1,48 +1,79 @@
-# seamsh - Copyright (C) <2010-2020>
-# <Universite catholique de Louvain (UCL), Belgium
-# 	
-# List of the contributors to the development of seamsh: see AUTHORS file.
-# Description and complete License: see LICENSE file.
-# 	
-# This program (seamsh) is free software: 
-# you can redistribute it and/or modify it under the terms of the GNU Lesser General 
-# Public License as published by the Free Software Foundation, either version
-# 3 of the License, or (at your option) any later version.
-# 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Lesser General Public License for more details.
-# 
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program (see COPYING file).  If not, 
-# see <http://www.gnu.org/licenses/>.
-
 # %%
-# my super example simple
-# =======================
+# Simple Geometry
+# ===============
+# This example illustrates how to insert different types of curves
+# directly from numpy arrays and osr spatial references.
 
 import seamsh
+from seamsh.geometry import CurveType
 import numpy as np
 from osgeo import osr 
 
-def mesh_size(x) :
-    return (0.0025+(1+np.sin(4*np.pi*x[:,1]*np.pi*x[:,0]))*0.01)*2
+# %%
+# First, let's create a domain object and its associated projection.
+# Any projection supported by osgeo.osr can be used.
 
 domain_srs = osr.SpatialReference()
 domain_srs.ImportFromEPSG(4326)
+domain = seamsh.geometry.Domain(domain_srs)
 
-domain = seamsh.Domain(domain_srs)
-domain.add_curve([[0,0],[-0.2,0.25],[-0.2,0.75],[0,1]],
-        "wall",domain_srs,curve_type=seamsh.SPLINE)
-domain.add_curve([[0,1],[0.25,1.2],[0.75,1.2],[1,1]],
-        "wall1",domain_srs,curve_type=seamsh.BSPLINE)
-domain.add_curve([[0,0],[0.25,-0.2],[0.75,-0.2],[1,0]],
-        "wall2",domain_srs,curve_type=seamsh.STRICTPOLYLINE)
-domain.add_curve([[1,1],[1.2,0.75],[1.2,0.25],[1,0]],
-        "wall3",domain_srs,curve_type=seamsh.STRICTPOLYLINE)
-domain.add_curve([[0.4,0.6],[0.6,0.6],[0.6,0.4],[0.4,0.4],[0.4,0.6]],
-        "wallin",domain_srs,curve_type=seamsh.BSPLINE)
-domain.build_topology()
+# %%
+# Boundary curves are created from a list of control points, an osr projection,
+# a physical tag and a curve type. If the projection does not match the domain's
+# projection, the points are re-projected conversion is done.
+# A STRICTPOLYLINE curve linearly interpolates control points and forces a mesh
+# on each control point.
 
-seamsh.mesh_gmsh(domain,"test.msh",mesh_size)
+domain.add_boundary_curve([[0,0],[-0.2,0.25],[-0.2,0.75],[0,1]],
+        "wall0",domain_srs,curve_type=CurveType.STRICTPOLYLINE)
+
+# %%
+# A POLYLINE is similar to a STRICTPOLYLINE but no mesh point is forced on the
+# control points, the mesher can cut the corners.
+
+domain.add_boundary_curve([[0,1],[0.25,1.2],[0.75,1.2],[1,1]],
+        "wall1",domain_srs,curve_type=CurveType.POLYLINE)
+
+# %%
+# A SPLINE uses a cubic spline interpolation through the control points
+
+domain.add_boundary_curve([[0,0],[0.25,-0.2],[0.75,-0.2],[1,0]],
+        "wall2",domain_srs,curve_type=CurveType.SPLINE)
+
+# %%
+# A BSPLINE is smoother than a SPLINE but the control points are not on the
+# curves.
+
+domain.add_boundary_curve([[1,1],[1.2,0.75],[1.2,0.25],[1,0]],
+        "wall3",domain_srs,curve_type=CurveType.BSPLINE)
+
+# %%
+# If the last point is the same as the first point, a periodic curve is
+# created.
+
+domain.add_boundary_curve([[0.4,0.6],[0.6,0.6],[0.6,0.4],[0.4,0.4],[0.4,0.6]],
+        "island",domain_srs,curve_type=CurveType.BSPLINE)
+
+# %%
+# Interior curves are meshed on both sides, they do not define the domain
+# boundaries but forces edge alignment and mesh points. When an interior curve
+# can touch a boundary or another interior curve, a control point should be 
+# present in both curves at the intersection.
+
+domain.add_interior_curve([[-0.2,0.75],[0.1,0.6],[0.2,0.4],[0.1,0.4]],
+        "interior1",domain_srs,curve_type=CurveType.BSPLINE)
+domain.add_interior_curve([[0.1,0.4],[0.1,0.6],[0.1,0.8]],
+        "interior2",domain_srs,curve_type=CurveType.POLYLINE)
+
+# %%
+# A callback which takes an numpy array of points and a projection as argument
+# defines the mesh element size. In this case, a simple analytical function is
+# used.
+
+def mesh_size(x, projection) :
+    return (0.005+(1+np.sin(4*np.pi*x[:,1]*np.pi*x[:,0]))*0.01)
+
+# %%
+# Finally, the seamesh.gmsh.mesh function generates the mesh.
+
+seamsh.gmsh.mesh(domain,"basic_geometry.msh",mesh_size,version=2.0)
