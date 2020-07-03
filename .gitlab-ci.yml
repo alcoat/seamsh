@@ -85,7 +85,7 @@ pages:
     - make
     - cp libseamsh.so ../../seamsh
     - cd ../../doc
-    - python3 gen_examples.p
+    - python3 gen_examples.py
     - make html
     - mv _build/html ../public
   artifacts:
