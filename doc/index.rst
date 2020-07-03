@@ -1,6 +1,8 @@
 Welcome to seamsh's documentation!
 ==================================
 
+.. include:: demo.rst
+
 .. include:: modules.rst
 
 .. toctree::

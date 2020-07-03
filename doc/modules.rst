@@ -1,5 +1,5 @@
-seamsh
-======
+Pyhton api
+==========
 
 .. toctree::
    :maxdepth: 4
