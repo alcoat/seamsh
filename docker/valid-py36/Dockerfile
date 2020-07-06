@@ -18,16 +18,16 @@
 # along with this program (see COPYING file).  If not, 
 # see <http://www.gnu.org/licenses/>.
 
-FROM ubuntu:20.04
+FROM python:3.6
 
 RUN apt update
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt update &&  apt install -y git python3 python3-numpy gmsh python3-scipy python3-petsc4py python3-pip gdal-bin
+RUN apt update &&  apt install -y git gmsh gdal-bin libgdal-dev
 
 VOLUME ["/etc/gitlab-runner"]
 
 RUN useradd -ms /bin/bash validator
 USER validator
-RUN pip3 install numpy gmsh-dev
-RUN pip3 install gdal
+RUN pip install numpy gmsh-dev
+RUN pip install gdal==2.4.4
 WORKDIR /home/validator
