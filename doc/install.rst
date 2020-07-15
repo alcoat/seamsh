@@ -30,7 +30,7 @@ Pre-compiled seamsh libraries are provided for 64bit linux, windows and OSX.
 
 .. code-block:: bash 
 
-   pip3 install seammsh
+   pip3 install seamsh
 
 Installation from sources
 -------------------------
