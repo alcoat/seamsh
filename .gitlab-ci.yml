@@ -47,6 +47,10 @@ seamshbuild-windows :
     - mv *.dll *.dll.a ../../seamsh
     - cd ../..
     - python3 setup.py bdist_wheel --plat-name=win_amd64 
+  artifacts:
+    paths:
+      - dist
+    expire_in: 1 day
 
 seamshbuild-osx :
   image : immc/seamsh-build:v0.9
