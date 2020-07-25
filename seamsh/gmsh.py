@@ -140,7 +140,7 @@ def mesh(domain: Domain, filename: str, mesh_size: MeshSizeCallback,
     # 1D mesh
     for i in range(nadapt1d):
         gmsh.model.mesh.generate(1)
-        if intermediate_file_name is not None :
+        if intermediate_file_name is not None and intermediate_file_name != "-":
             gmsh.write(intermediate_file_name+"_1d_"+str(i)+".msh")
         for (dim, tag) in gmsh.model.getEntities(1):
             _, x, u = gmsh.model.mesh.getNodes(dim, tag, True)

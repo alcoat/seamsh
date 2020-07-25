@@ -325,9 +325,6 @@ def coarsen_boundaries(domain: Domain, x0: typing.Tuple[float, float],
     """ Creates a new Domain with the same projection and coarsened
     boundaries.
 
-    For the moment, the physical tags are not transferred to the new Domain,
-    this will be implemented in the future.
-
     Args:
         domain: the domain to coarsen
         x0: the coordinates of one point inside the domain.
@@ -342,17 +339,38 @@ def coarsen_boundaries(domain: Domain, x0: typing.Tuple[float, float],
             in the future.
     """
 
-    sampled = [_curve_sample(curve, sampling) for curve in domain._curves]
-    x = np.vstack(list(sampled))
-    x, _, _ = _generate_unique_points(x)
+    sampled = []
+    tags = []
+    maxtag = 1
+    str2tag = {}
+    for curve in domain._curves :
+        cs = _curve_sample(curve, sampling)
+        sampled.append(cs)
+        if curve.tag not in str2tag :
+            str2tag[curve.tag] = maxtag
+            maxtag += 1
+        tags.append(np.full(cs.shape[0],str2tag[curve.tag],dtype=np.int32))
+    x = np.vstack(sampled)
+    tags = np.concatenate(tags)
+    x, unique_id, _ = _generate_unique_points(x)
+    utags = list([-1,-1] for i in x)
+    for i,tag  in zip(unique_id,tags) :
+        if utags[i][0] == -1 :
+            utags[i][0] = tag
+        found = False
+        j = i
+        while j != -1 :
+            found |= utags[j][0] == tag
+            j = utags[j][1]
+        if not found :
+            utags[j][1] = len(utags)
+        utags.append([tag,-1])
+    tags = np.array(utags).reshape([-1])
     x = np.copy(x[:, :2])
     # avoid cocircular points
     eps = (np.max(x, axis=0, keepdims=True) -
            np.min(x, axis=0, keepdims=True))*1e-8
     x = x + np.random.random(x.shape)*eps
-    tag = np.hstack(list(
-        np.full(curve.points.shape[0], i, np.int32)
-        for i, curve in enumerate(domain._curves)))
 
     def np2c(a, dtype=np.float64):
         tmp = np.require(a, dtype, "C")
@@ -360,36 +378,36 @@ def coarsen_boundaries(domain: Domain, x0: typing.Tuple[float, float],
         r.tmp = tmp
         return r
     tri = Delaunay(x).simplices
-    n_ll = c.c_int()
     n_l = c.c_int()
     n_xo = c.c_int()
     p_xo = c.POINTER(c.c_double)()
     p_l = c.POINTER(c.c_int)()
-    p_ll = c.POINTER(c.c_int)()
     ms = mesh_size(x, domain._projection)
     lib.gen_boundaries_from_points(
-        c.c_int(x.shape[0]), np2c(x), np2c(tag, np.int32),
+        c.c_int(x.shape[0]), np2c(x), np2c(tags, np.int32),
         c.c_int(tri.shape[0]), np2c(tri, np.int32),
         c.c_double(x0[0]), c.c_double(x0[1]),
         np2c(ms),
         c.byref(p_xo), c.byref(n_xo),
-        c.byref(p_l), c.byref(n_l),
-        c.byref(p_ll), c.byref(n_ll))
+        c.byref(p_l), c.byref(n_l))
     xbuf = c.cast(p_xo, c.POINTER(n_xo.value*2*c.c_double)).contents
     xo = np.ctypeslib.frombuffer(xbuf, dtype=np.float64)
     xo = xo.reshape([-1, 2]).copy()
     lib.libcfree(p_xo)
-    linesbuf = c.cast(p_l, c.POINTER(n_l.value*3*c.c_int))
+    linesbuf = c.cast(p_l, c.POINTER(n_l.value*c.c_int))
     lines = np.ctypeslib.frombuffer(linesbuf.contents, dtype=np.int32)
-    lines = lines.reshape([-1, 3]).copy()
-    lib.libcfree(p_l)
-    # lib.libcfree(p_ll)
     odomain = Domain(domain._projection)
-    for i, (lfrom, lto, llast) in enumerate(lines):
-        pts = list(range(lfrom, lto+1))+[llast]
-        odomain.add_boundary_curve(xo[pts], "boundaries",
+    breaks = np.where(lines == -1)[0]
+    tagi2str = dict((i,s) for (s,i) in str2tag.items())
+    for i, b in enumerate(breaks) :
+        ifrom = 0 if i == 0 else breaks[i-1]+1
+        ito = breaks[i]
+        tag = tagi2str[lines[ifrom]]
+        pts = lines[ifrom+1:ito]
+        odomain.add_boundary_curve(xo[pts], tag,
                                    domain._projection,
                                    curve_type=CurveType.POLYLINE)
+    lib.libcfree(p_l)
     return odomain
 
 

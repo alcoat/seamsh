@@ -25,17 +25,6 @@
 #include <math.h>
 #include <string.h>
 
-void *vector_push(void **p, int *psize, int elem_size) {
-  if (*psize == 0) {
-    *p = malloc(elem_size*2);
-  }
-  else if (*psize%2==0) {
-    *p = realloc(*p,(*psize)*2*elem_size);
-  }
-  *psize += 1;
-  return ((char*)*p) + ((*psize-1)*elem_size);
-}
-
 int is_inside(const double p[2], const double a[2], const double b[2], const double c[2]) {
   double dxdxi[2][2] = {{b[0]-a[0],c[0]-a[0]},{b[1]-a[1],c[1]-a[1]}};
   double det = dxdxi[0][0]*dxdxi[1][1]-dxdxi[1][0]*dxdxi[0][1];
@@ -251,6 +240,52 @@ static int check_vertex_move(int t, int v, double *moveto, int ignore0, int igno
   }
   return 1;
 }
+
+static void merge_tag_list(int *tag, int v0, int v1) {
+  // attach v1 chain at the end of v0 chain
+  int v0endtag = v0;
+  while(tag[v0endtag*2+1] != -1) v0endtag = tag[v0endtag*2+1];
+  tag[v0endtag*2+1] = v1;
+  return;
+  // remove duplicates
+  int end = v0;
+  int last = v0;
+  int cur;
+  for (cur=v0; cur != -1; cur = tag[cur*2+1]) {
+    int found = 0;
+    for (int i = v0; i!= end; i = tag[i*2+1]) {
+      found |= tag[i*2] == tag[cur*2];
+    }
+    if (!found) {
+      tag[end*2] = tag[cur*2];
+      last = end;
+      end = tag[end*2+1];
+    }
+  }
+  if (end!=-1) {
+    tag[last*2+1] = -1;
+  }
+}
+
+static int has_tag(const int *tag, int v, int t) {
+  while (v != -1) {
+    if (tag[v*2] == t) return 1;
+    v = tag[v*2+1];
+  }
+  return 0;
+}
+
+static int get_segment_tag(const int *tag, int v0, int v1, int current_tag) {
+  if (has_tag(tag,v0,current_tag) && has_tag(tag,v1,current_tag))
+    return current_tag;
+  for (int i = v0; i!= -1; i = tag[i*2+1]) {
+    if(has_tag(tag,v1,tag[i*2])) return tag[i*2];
+  }
+  if (has_tag(tag,v0,current_tag) || has_tag(tag,v1,current_tag))
+    return current_tag;
+  return tag[v0*2];
+}
+
 /*
      v1                
      /|\
@@ -262,7 +297,7 @@ static int check_vertex_move(int t, int v, double *moveto, int ignore0, int igno
      v0
 */
 // collapse tri[e0] on tri[(e0+1)%3] if possible.
-static int collapse_edge(int t0, int e0, double xi, int *tri, int *neigh, double *x, double *length, int *vcolor) {
+static int collapse_edge(int t0, int e0, double xi, int *tri, int *neigh, double *x, double *length, int *vcolor,int *tag) {
   int v0 = tri[t0*3+e0];
   int v1 = tri[t0*3+(e0+1)%3];
   double a = xi, b = 1-a;
@@ -274,7 +309,7 @@ static int collapse_edge(int t0, int e0, double xi, int *tri, int *neigh, double
   x[v0*2+1] = xmid[1];
   length[v0] = a*length[v0] + b*length[v1];
   vcolor[v0] = vcolor[v0] > vcolor[v1] ? vcolor[v0] : vcolor[v1];
-  //v0->setTag(std::max(v0->tag(),v1->tag()));
+  merge_tag_list(tag,v0,v1);
   substitute_vertex(t0,v1,v0,tri,neigh);
   substitute_neighbour(neigh[t0*3+(e0+1)%3],neigh[t0*3+(e0+2)%3],t0,neigh);
   tri[t0*3] = -1;
@@ -332,7 +367,29 @@ static int *build_neighbours(int n_tri, const int *tri) {
   return neighbours;
 }
 
-static void extract_boundaries(const double *x_p, const int *vtag, int n_tri, const int *tri, const int *tri_color, /*, std::map<int,std::string> boundary_names*/double **xo, int *nxo, int **l, int *nl, int **ll, int *nll)
+void *vector_append(void **p, int *psize, int elem_size) {
+  if (*psize == 0) {
+    *p = malloc(elem_size*2);
+  }
+  else if (*psize%2==0) {
+    *p = realloc(*p,(*psize)*2*elem_size);
+  }
+  *psize += 1;
+  return ((char*)*p) + ((*psize-1)*elem_size);
+}
+
+static int coord_vector_append(double **pts, int *npts, const double *x) {
+  double *xn = (double*)vector_append((void**)pts,npts,2*sizeof(double));
+  xn[0] = x[0];
+  xn[1] = x[1];
+  return (*npts)-1;
+}
+
+static int int_vector_append(int **v, int *n, int i) {
+  *(int*)vector_append((void**)v,n,sizeof(int)) = i;
+}
+
+static void extract_boundaries(const double *x_p, const int *vtag, int n_tri, const int *tri, const int *tri_color,double **xo, int *nxo, int **l, int *nl)
 {
   // filter triangles
   int n_tri_f = 0;
@@ -346,30 +403,25 @@ static void extract_boundaries(const double *x_p, const int *vtag, int n_tri, co
   }
   int *neighbours = build_neighbours(n_tri_f,tri_f);
   // walk
-  *xo = NULL;
-  *ll = NULL;
-  *l = NULL;
-  *nxo = 0, *nll = 0, *nl = 0;
   int *touched = malloc(sizeof(int)*n_tri_f);
   for(int i = 0; i < n_tri_f; ++i)
     touched[i] = 0;
+  // build line loops
+  int *ll = NULL;
+  int nll = 0;
+
   for(int i = 0; i < n_tri_f; ++i){
     if (touched[i] == 1) continue;
     for (int j = 0; j<3; ++j) {
       if(neighbours[i*3+j]>=0) continue;
       int firstp = tri_f[i*3+j];
-      double *X = (double*)vector_push((void**)xo,nxo,sizeof(double)*2);
-      X[0] = x_p[firstp*2+0];
-      X[1] = x_p[firstp*2+1];
+      int_vector_append(&ll,&nll,firstp);
       int curp = tri_f[i*3+(j+1)%3];
       int curt = i;
-      int *line = (int*)vector_push((void**)l,nl,3*sizeof(int));
-      line[0] = (*nxo)-1;
+      int firstpo = *nxo-1;
       touched[i] = 1;
       while (curp != firstp) {
-        double *X = (double*)vector_push((void**)xo,nxo,sizeof(double)*2);
-        X[0] = x_p[curp*2+0];
-        X[1] = x_p[curp*2+1];
+        int_vector_append(&ll,&nll,curp);
         int p = getid3(tri_f+curt*3,curp);
         while (neighbours[curt*3+p] >=0) {
           curt = neighbours[curt*3+p]; 
@@ -378,10 +430,46 @@ static void extract_boundaries(const double *x_p, const int *vtag, int n_tri, co
         touched[curt] = 1;
         curp = tri_f[curt*3+(p+1)%3];
       }
-      line[1] = (*nxo)-1;
-      line[2] = line[0];
+      int_vector_append(&ll,&nll,-1);
       break;
     }
+  }
+  // build lines
+  *xo = NULL;
+  *l = NULL;
+  *nxo = 0, *nl = 0;
+  for (int i = 0; i < nll; ++i) {
+    int *lli = ll+i;
+    int length = 0;
+    for (length = 0; lli[length] != -1; ++length);
+    int start = 0;
+    int ctag = get_segment_tag(vtag,lli[0],lli[1],-1);
+    for (int j=1; j < length; ++j) {
+      int ntag = get_segment_tag(vtag,lli[j],lli[(j+1)%length],ctag);
+      if (ctag != ntag) {
+        start = j;
+        break;
+      }
+    }
+    int firstp = *nxo;;
+    ctag = get_segment_tag(vtag,lli[start],lli[(start+1)%length],-1);
+    int_vector_append(l,nl,ctag);
+    for (int j = 0; j < length; ++j) {
+      int p = lli[(start+j)%length];
+      int pnext = lli[(start+j+1)%length];
+      int stag = get_segment_tag(vtag,p,pnext,ctag);
+      coord_vector_append(xo,nxo,x_p+p*2);
+      int_vector_append(l,nl,(*nxo)-1);
+      if (stag != ctag) {
+        int_vector_append(l,nl,-1);
+        int_vector_append(l,nl,stag);
+        int_vector_append(l,nl,(*nxo)-1);
+        ctag = stag;
+      }
+    }
+    int_vector_append(l,nl,firstp);
+    int_vector_append(l,nl,-1);
+    i += length;
   }
   free(neighbours);
   free(touched);
@@ -448,7 +536,7 @@ static int *color_triangles(const double *x, int n_tri, const int *tri, const in
   return tri_color;
 }
 
-static void optimize_mesh(double *x, double *length, int nx, int n_tri, int *tri, int *tri_color, int *neigh) {
+static void optimize_mesh(double *x, double *length, int nx, int n_tri, int *tri, int *tri_color, int *neigh,int *tag) {
   int *vcolor = malloc(sizeof(int)*nx);
   for (int i=0; i<nx; ++i) {
     vcolor[i] = 0;
@@ -481,11 +569,11 @@ static void optimize_mesh(double *x, double *length, int nx, int n_tri, int *tri
           // and so is our neighbour (if any)
           // remove point that does not touch the boundary
           if (vcolor[i1] == 0) {
-            int r = collapse_edge(i,j,1,tri,neigh,x,length,vcolor);
+            int r = collapse_edge(i,j,1,tri,neigh,x,length,vcolor,tag);
             nops += r;
           }
           else if (vcolor[i0] == 0){
-            int r = collapse_edge(i,j,0,tri,neigh,x,length,vcolor);
+            int r = collapse_edge(i,j,0,tri,neigh,x,length,vcolor,tag);
             nops += r;
           }
         }
@@ -493,9 +581,11 @@ static void optimize_mesh(double *x, double *length, int nx, int n_tri, int *tri
             && vdist(&x[i0*2],&x[i1*2]) < 0.7*fmin(length[i0],length[i1])) {
           // we are on the boundary
           // collapse edge if too short (and possible)
+          double opt = optimal_boundary_collapse(i,j,tri,neigh,x,tri_color);
           nops += 
-            collapse_edge(i,j,optimal_boundary_collapse(i,j,tri,neigh,x,tri_color),tri,neigh,x,length,vcolor) ||
-            collapse_edge(i,j,0,tri,neigh,x,length,vcolor) || collapse_edge(i,j,1,tri,neigh,x,length,vcolor);
+            collapse_edge(i,j,opt,tri,neigh,x,length,vcolor,tag)
+            || collapse_edge(i,j,0,tri,neigh,x,length,vcolor,tag)
+            || collapse_edge(i,j,1,tri,neigh,x,length,vcolor,tag);
         }
       }
     }
@@ -503,13 +593,13 @@ static void optimize_mesh(double *x, double *length, int nx, int n_tri, int *tri
   free(vcolor);
 }
 
-void gen_boundaries_from_points(int n_vertices, double *x, int *tag, int n_tri, int *tri, double lon, double lat, double *mesh_size, double **xo, int *nxo, int **l, int *nl, int **ll, int *nll)
+void gen_boundaries_from_points(int n_vertices, double *x, int *tag, int n_tri, int *tri, double lon, double lat, double *mesh_size, double **xo, int *nxo, int **l, int *nl)
 {
   orient_triangles(x,n_tri,tri);
   int *neigh = build_neighbours(n_tri,tri);
   int *tri_color = color_triangles(x,n_tri,tri,neigh,lon,lat,mesh_size);
-  optimize_mesh(x, mesh_size, n_vertices, n_tri, tri, tri_color, neigh);
-  extract_boundaries(x, tag, n_tri, tri, tri_color/*, std::map<int,std::string> boundary_names*/,xo,  nxo, l,nl,ll,nll);
+  optimize_mesh(x, mesh_size, n_vertices, n_tri, tri, tri_color, neigh,tag);
+  extract_boundaries(x, tag, n_tri, tri, tri_color, xo,  nxo, l, nl);
   free(tri_color);
   free(neigh);
 }
