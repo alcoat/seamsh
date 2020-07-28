@@ -25,15 +25,6 @@
 #include <math.h>
 #include <string.h>
 
-int is_inside(const double p[2], const double a[2], const double b[2], const double c[2]) {
-  double dxdxi[2][2] = {{b[0]-a[0],c[0]-a[0]},{b[1]-a[1],c[1]-a[1]}};
-  double det = dxdxi[0][0]*dxdxi[1][1]-dxdxi[1][0]*dxdxi[0][1];
-  double dxidx[2][2] = {{dxdxi[1][1]/det,-dxdxi[0][1]/det},{-dxdxi[1][0]/det,dxdxi[1][1]/det}};
-  double dp[2] = {p[0]-a[0],p[1]-a[1]};
-  double xi[2] = {dxidx[0][0]*dp[0]+dxidx[0][1]*dp[1],dxidx[1][0]*dp[0]+dxidx[1][1]*dp[1]};
-  return xi[0] >= -1e-8 && xi[1] >= -1e-8 && xi[0]+xi[1] <= 1+1e-8;
-}
-
 double triangle_signed_area(const double *a, const double *b, const double *c) {
   double dxdxi[2][2] = {{b[0]-a[0],c[0]-a[0]},{b[1]-a[1],c[1]-a[1]}};
   double det = dxdxi[0][0]*dxdxi[1][1]-dxdxi[1][0]*dxdxi[0][1];
@@ -487,25 +478,8 @@ static void orient_triangles(const double *x, int n_tri, int *tri) {
   }
 }
 
-static int find_triangle_containing_point(const double *x, int n_tri, const int *tri, double lon, double lat) {
-  // find triangle with first point
-  int first = -1;
-  double xp[2] = {lon,lat};
-  for (int i=0; i<n_tri; ++i) {
-    const int *t = tri+i*3;
-    if(is_inside(xp,x+t[0]*2,x+t[1]*2,x+t[2]*2)) {
-      first = i;
-    }
-  }
-  if(first==-1) {
-    printf("no triangle contains the first point %g %g\n",lon,lat);
-    exit(1);
-  }
-  return first;
-}
 
-static int *color_triangles(const double *x, int n_tri, const int *tri, const int *neigh, double lon, double lat, const double *length) {
-  int first = find_triangle_containing_point(x,n_tri,tri,lon,lat);
+static int *color_triangles(const double *x, int n_tri, const int *tri, const int *neigh, int first, const double *length) {
   int *tri_color = malloc(sizeof(int)*n_tri);
   for (int i=0; i<n_tri; ++i) {
     tri_color[i] = 0;
@@ -593,11 +567,11 @@ static void optimize_mesh(double *x, double *length, int nx, int n_tri, int *tri
   free(vcolor);
 }
 
-void gen_boundaries_from_points(int n_vertices, double *x, int *tag, int n_tri, int *tri, double lon, double lat, double *mesh_size, double **xo, int *nxo, int **l, int *nl)
+void gen_boundaries_from_points(int n_vertices, double *x, int *tag, int n_tri, int *tri, int first, double *mesh_size, double **xo, int *nxo, int **l, int *nl)
 {
   orient_triangles(x,n_tri,tri);
   int *neigh = build_neighbours(n_tri,tri);
-  int *tri_color = color_triangles(x,n_tri,tri,neigh,lon,lat,mesh_size);
+  int *tri_color = color_triangles(x,n_tri,tri,neigh,first,mesh_size);
   optimize_mesh(x, mesh_size, n_vertices, n_tri, tri, tri_color, neigh,tag);
   extract_boundaries(x, tag, n_tri, tri, tri_color, xo,  nxo, l, nl);
   free(tri_color);

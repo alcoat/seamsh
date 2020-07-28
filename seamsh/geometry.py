@@ -375,7 +375,8 @@ def coarsen_boundaries(domain: Domain, x0: typing.Tuple[float, float],
         r = c.c_void_p(tmp.ctypes.data)
         r.tmp = tmp
         return r
-    tri = Delaunay(x).simplices
+    tri =  Delaunay(x)
+    first = tri.find_simplex(x0)
     n_l = c.c_int()
     n_xo = c.c_int()
     p_xo = c.POINTER(c.c_double)()
@@ -383,11 +384,9 @@ def coarsen_boundaries(domain: Domain, x0: typing.Tuple[float, float],
     ms = mesh_size(x, domain._projection)
     lib.gen_boundaries_from_points(
         c.c_int(x.shape[0]), np2c(x), np2c(tags, np.int32),
-        c.c_int(tri.shape[0]), np2c(tri, np.int32),
-        c.c_double(x0[0]), c.c_double(x0[1]),
-        np2c(ms),
-        c.byref(p_xo), c.byref(n_xo),
-        c.byref(p_l), c.byref(n_l))
+        c.c_int(tri.simplices.shape[0]), np2c(tri.simplices, np.int32),
+        c.c_int(first), np2c(ms),
+        c.byref(p_xo), c.byref(n_xo), c.byref(p_l), c.byref(n_l))
     xbuf = c.cast(p_xo, c.POINTER(n_xo.value*2*c.c_double)).contents
     xo = np.ctypeslib.frombuffer(xbuf, dtype=np.float64)
     xo = xo.reshape([-1, 2]).copy()
