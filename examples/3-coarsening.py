@@ -13,6 +13,7 @@
 #     but the lines defining the boundaries can intersect each others. 
 # 
 # But :
+#
 #   - Interior curves are not handled, they can be present as long as they
 #     do not intersect the domain boundaries (external and islands) but they
 #     won't be coarsened.
@@ -34,12 +35,22 @@ import seamsh.geometry
 import numpy as np
 from osgeo import osr 
 
-latlong = osr.SpatialReference()
-latlong.ImportFromProj4("+proj=latlong +ellps=WGS84 +unit=degrees")
-domain_srs = osr.SpatialReference()
-domain_srs.ImportFromProj4("+proj=utm +ellps=WGS84 +zone=31")
-domain = seamsh.geometry.Domain(domain_srs)
+lonlat = osr.SpatialReference()
+lonlat.ImportFromProj4("+proj=latlong +ellps=WGS84 +unit=degrees")
+utm32 = osr.SpatialReference()
+utm32.ImportFromProj4("+proj=utm +ellps=WGS84 +zone=32")
+utm31 = osr.SpatialReference()
+utm31.ImportFromProj4("+proj=utm +ellps=WGS84 +zone=31")
+
+domain = seamsh.geometry.Domain(utm31)
 domain.add_boundary_curves_shp("data/data_no_duplicate.shp","physical",CurveType.POLYLINE)
+
+# %%
+# Clip the domain by a circle in UTM (zone32) coordinates
+
+alphas = np.linspace(0,2*np.pi,200)
+circle_points = np.array([[272e3,4763e3]])+50e3*np.column_stack([np.sin(alphas),np.cos(alphas)])
+domain.add_boundary_curve(circle_points,"open",utm32)
 
 dist_coast_field = seamsh.field.Distance(domain,100,["coast","island"])
 dist_porquerolles_field = seamsh.field.Distance(domain,20,["porquerolles"])
@@ -56,7 +67,7 @@ def mesh_size(x,projection) :
 # than the smallest value returned by the mesh_size callback, otherwise the resulting
 # geometry will be invalid.
 
-coarse = seamsh.geometry.coarsen_boundaries(domain,(6.63,42.21),latlong,mesh_size,20)
+coarse = seamsh.geometry.coarsen_boundaries(domain,(6.21,42.95),lonlat,mesh_size,20)
 
 # %%
 # The resulting coarsened domain can be meshed normally.
