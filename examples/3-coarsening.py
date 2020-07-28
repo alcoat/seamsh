@@ -12,8 +12,7 @@
 #     The only requirement is that the external boundary should be closed 
 #     but the lines defining the boundaries can intersect each others. 
 # 
-# But for now, the coarsening algorithm presents several limitations:
-#   - The physical tags are lost (this will be fixed soon).
+# But :
 #   - Interior curves are not handled, they can be present as long as they
 #     do not intersect the domain boundaries (external and islands) but they
 #     won't be coarsened.
@@ -35,6 +34,8 @@ import seamsh.geometry
 import numpy as np
 from osgeo import osr 
 
+latlong = osr.SpatialReference()
+latlong.ImportFromProj4("+proj=latlong +ellps=WGS84 +unit=degrees")
 domain_srs = osr.SpatialReference()
 domain_srs.ImportFromProj4("+proj=utm +ellps=WGS84 +zone=31")
 domain = seamsh.geometry.Domain(domain_srs)
@@ -55,7 +56,7 @@ def mesh_size(x,projection) :
 # than the smallest value returned by the mesh_size callback, otherwise the resulting
 # geometry will be invalid.
 
-coarse = seamsh.geometry.coarsen_boundaries(domain,(8e5,4.68e6),domain_srs,mesh_size,20)
+coarse = seamsh.geometry.coarsen_boundaries(domain,(6.63,42.21),latlong,mesh_size,20)
 
 # %%
 # The resulting coarsened domain can be meshed normally.

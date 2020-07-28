@@ -328,9 +328,7 @@ def coarsen_boundaries(domain: Domain, x0: typing.Tuple[float, float],
     Args:
         domain: the domain to coarsen
         x0: the coordinates of one point inside the domain.
-        x0projection: the coordinates system of x0. For now, this parameter
-            is ignored and the x0 should be in the same coordinate system
-            as the domain.
+        x0projection: the coordinates system of x0.
         mesh_size: a function returning the desired mesh element size for given
             coordinates
         sampling: should be (at least) two times smaller than the smallest
@@ -338,7 +336,7 @@ def coarsen_boundaries(domain: Domain, x0: typing.Tuple[float, float],
             fail. This parameter will be removed (and determined automatically)
             in the future.
     """
-
+    x0 = _ensure_valid_points(np.array([x0]),x0projection,domain._projection)[0]
     sampled = []
     tags = []
     maxtag = 1
