@@ -9,10 +9,10 @@
 import os
 import urllib.request
 import tarfile
-if not os.path.isdir("data") :
-    urllib.request.urlretrieve("ftp://braque.mema.ucl.ac.be/seamsh/data-test-1.tar.gz",
-                               "data-test-1.tar.gz")
-    f = tarfile.open("data-test-1.tar.gz","r:*")
+if not os.path.isdir("data2") :
+    urllib.request.urlretrieve("ftp://braque.mema.ucl.ac.be/seamsh/data-test-2.tar.gz",
+                               "data-test-2.tar.gz")
+    f = tarfile.open("data-test-2.tar.gz","r:*")
     f.extractall()
 
 # %%
@@ -37,20 +37,21 @@ domain = seamsh.geometry.Domain(domain_srs)
 # In the shapefile, a field named "physical" defines the physical tag of each
 # curve. If a re-projection is required, it will be done automatically.
 
-domain.add_boundary_curves_shp("data/data_no_duplicate.shp","physical",CurveType.POLYLINE)
+domain.add_boundary_curves_shp("data2/data_no_duplicate.shp","physical",CurveType.POLYLINE)
 
 # %%
-# Interior curves (and interior points) can be loaded in a similar way.
-# In this case we do not assign any physical tag.
+# Interior curves and interior points can be loaded in a similar way.
+# Physical tags are optional
 
-domain.add_interior_curves_shp("data/interior.shp",None,CurveType.STRICTPOLYLINE)
+domain.add_interior_curves_shp("data2/interior.shp",None,CurveType.STRICTPOLYLINE)
+domain.add_interior_points_shp("data2/interior_points.shp","physical")
 
 # %%
 # Seamsh provides helper classes to compute the element size field.
 #
 # field.Raster allows to load geotiff files (or any raster file supported by gdal).
 
-bath_field = seamsh.field.Raster("data/medit.tiff")
+bath_field = seamsh.field.Raster("data2/medit.tiff")
 
 # %%
 # field.Distance can be used to compute the distance from given (tagged) boundaries.

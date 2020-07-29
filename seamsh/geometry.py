@@ -99,6 +99,12 @@ class _Curve:
         self.curve_type = curve_type
 
 
+class _Point:
+    def __init__(self,x,tag) :
+        self.tag = tag
+        self.x = x
+
+
 class Domain:
     """ List the domain boundaries, forced mesh points and
     forced mesh lines. """
@@ -117,7 +123,8 @@ class Domain:
     def _build_topology(self):
         curvesiter = itertools.chain(self._curves, self._interior_curves)
         allpoints = np.row_stack(list(itertools.chain(
-            (curve.points for curve in curvesiter), self._interior_points)))
+            (curve.points for curve in curvesiter),
+            (point.x for point in self._interior_points))))
         self._points, unique_id, nbreakpoints = _generate_unique_points(
             allpoints)
         # assign points id in curves
@@ -127,9 +134,10 @@ class Domain:
             curve.pointsid = unique_id[cid:cid+n]
             cid += n
         # assign points id for interior points
-        self._interior_points_id = unique_id[cid:]
+        for point in self._interior_points :
+            point.pointid = unique_id[cid]
+            cid += 1
         # break curves on repeated points
-
         def split_curves(curves, nbk):
             newcurves = []
             for curve in curves:
@@ -198,7 +206,7 @@ class Domain:
                                    curve_type, interior, onlypoints)
             return
         if onlypoints:
-            self.add_interior_points(geometry.GetPoints(), projection)
+            self.add_interior_points(geometry.GetPoints(), tag, projection)
         else:
             assert(geometry.GetGeometryType() == 2)
             if interior:
@@ -229,16 +237,18 @@ class Domain:
             self._add_geometry(i.geometry(), phys, layerproj, curve_type,
                                interior, points)
 
-    def add_interior_points(self, points: np.ndarray,
+    def add_interior_points(self, points: np.ndarray, physical_tag : str,
                             projection: osr.SpatialReference) -> None:
         """ Add forced interior mesh points
 
         Args:
             x: the points [n,2]
+            physical_tag: the points physical tag
             projection: the points coordinate system
         """
-        points = _ensure_valid_points(points, projection, self._projection)
-        self._interior_points.append(points)
+        x = _ensure_valid_points(points, projection, self._projection)
+        points = list(_Point(p,physical_tag) for p in x)
+        self._interior_points += points
 
     def add_boundary_curve(self, points: np.ndarray, physical_tag: str,
                            projection: osr.SpatialReference,
@@ -247,7 +257,7 @@ class Domain:
 
         Args:
             points: the curve control points [n,2]
-            physical_tag: the curve physical_tag
+            physical_tag: the curve physical tag
             projection: the points coordinate system
             curve_type: curve interpolation
         """
@@ -256,7 +266,7 @@ class Domain:
         self._curves.append(curve)
 
     def add_interior_curve(self, points: np.ndarray, physical_tag: str,
-                           projection: str,
+                           projection: osr.SpatialReference,
                            curve_type: CurveType = CurveType.POLYLINE) -> None:
         """ Adds a tagged curve inside the domain. The curve
         is not part of the domain boundary and will be meshed on both sides.

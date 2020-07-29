@@ -67,6 +67,12 @@ domain.add_interior_curve([[0.1,0.4],[0.1,0.6],[0.1,0.8]],
         "interior2",domain_srs,curve_type=CurveType.POLYLINE)
 
 # %%
+# Force several tagged mesh points
+
+domain.add_interior_points([[0.8,0.13]],"forcedpoint1",domain_srs)
+domain.add_interior_points([[0.8,0.8],[0.8,0.7]],"forcedpoint2",domain_srs)
+
+# %%
 # A callback which takes an numpy array of points and a projection as argument
 # defines the mesh element size. In this case, a simple analytical function is
 # used.

@@ -118,10 +118,13 @@ def mesh(domain: Domain, filename: str, mesh_size: MeshSizeCallback,
         tags = _gmsh_curve_geo(curve.curve_type, curve.pointsid)
         embeded.extend(tags)
         physicals.setdefault(curve.tag, []).extend(tags)
+    physicalspt = {}
+    for point in domain._interior_points:
+        physicalspt.setdefault(point.tag,[]).append(point.pointid+1)
     gmsh.model.geo.synchronize()
     gmsh.model.mesh.embed(1, embeded, 2, stag)
     gmsh.model.mesh.embed(
-        0, [i+1 for i in domain._interior_points_id], 2, stag)
+        0, [p.pointid+1 for p in domain._interior_points], 2, stag)
     it = 0
     for cl in domain._curveloops:
         for i, (l, o) in enumerate(cl):
@@ -135,6 +138,9 @@ def mesh(domain: Domain, filename: str, mesh_size: MeshSizeCallback,
     for name, tags in physicals.items():
         tag = gmsh.model.addPhysicalGroup(1, tags)
         gmsh.model.setPhysicalName(1, tag, name)
+    for name, tags in physicalspt.items():
+        tag = gmsh.model.addPhysicalGroup(0, tags)
+        gmsh.model.setPhysicalName(0, tag, name)
     tag = gmsh.model.addPhysicalGroup(2, [stag])
     gmsh.model.setPhysicalName(2, stag, "domain")
     # 1D mesh
