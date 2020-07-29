@@ -48,7 +48,7 @@ def _gmsh_curve_geo(curve_type: CurveType, pointsid):
         raise ValueError("unknown curve_type '%s'" % curve_type)
 
 
-def _curve_sample(curve, lc):
+def _curve_sample_fix(curve, lc):
     gmsh.model.add(str(uuid.uuid4()))
     tags = list([gmsh.model.geo.addPoint(*x, 0) -
                  1 for x in curve.points[:-1, :]])
@@ -66,6 +66,38 @@ def _curve_sample(curve, lc):
         1].reshape([-1, 3])
     gmsh.option.setNumber("Mesh.CharacteristicLengthMin", 0)
     gmsh.option.setNumber("Mesh.CharacteristicLengthMax", 1e22)
+    gmsh.model.remove()
+    return nodes[:, :2]
+
+
+def _curve_sample(curve, lc, projection):
+    gmsh.option.setNumber("Mesh.CharacteristicLengthFromPoints", 0)
+    gmsh.option.setNumber("Mesh.LcIntegrationPrecision", 1e-3)
+    gmsh.option.setNumber("Mesh.CharacteristicLengthFactor", 1)
+    gmsh.option.setNumber("Mesh.CharacteristicLengthFromCurvature", 0)
+    gmsh.option.setNumber("Mesh.CharacteristicLengthExtendFromBoundary", 0)
+    gmsh.option.setNumber("Mesh.CharacteristicLengthFromParametricPoints",
+                          1)
+    gmsh.model.add(str(uuid.uuid4()))
+    tags = list([gmsh.model.geo.addPoint(*x, 0) -
+                 1 for x in curve.points[:-1, :]])
+    if np.linalg.norm(curve.points[0, :]-curve.points[-1, :]) < 1e-8:
+        tags.append(tags[0])
+    else:
+        tags.append(gmsh.model.geo.addPoint(*curve.points[-1, :], 0)-1)
+    ltag = _gmsh_curve_geo(curve.curve_type, tags)
+    gmsh.model.geo.synchronize()
+    nadapt1d = 3
+    for i in range(nadapt1d):
+        gmsh.model.mesh.generate(1)
+        for (dim, tag) in gmsh.model.getEntities(1):
+            _, x, u = gmsh.model.mesh.getNodes(dim, tag, True)
+            size = lc(x.reshape([-1, 3]), projection)
+            gmsh.model.mesh.setSizeAtParametricPoints(dim, tag, u, size)
+        gmsh.model.mesh.clear()
+    gmsh.model.mesh.generate(1)
+    nodes = gmsh.model.mesh.getNodes(1, ltag[0], includeBoundary=True)[
+        1].reshape([-1, 3])
     gmsh.model.remove()
     return nodes[:, :2]
 

@@ -25,7 +25,7 @@ from scipy.spatial import cKDTree
 import logging
 from typing import List
 import itertools
-from .gmsh import _curve_sample
+from .gmsh import _curve_sample_fix
 
 
 def _ensure_valid_points(x, pfrom, pto):
@@ -55,7 +55,7 @@ class Distance:
         points = []
         for curve in itertools.chain(domain._curves, domain._interior_curves):
             if (tags is None) or (curve.tag in tags):
-                points.append(_curve_sample(curve, sampling))
+                points.append(_curve_sample_fix(curve, sampling))
         points = np.vstack(points)
         self._tree = cKDTree(points)
         self._projection = domain._projection

@@ -330,8 +330,7 @@ from .gmsh import _curve_sample
 
 def coarsen_boundaries(domain: Domain, x0: typing.Tuple[float, float],
                        x0projection: osr.SpatialReference,
-                       mesh_size: MeshSizeCallback,
-                       sampling: float) -> Domain:
+                       mesh_size: MeshSizeCallback) -> Domain:
     """ Creates a new Domain with the same projection and coarsened
     boundaries.
 
@@ -341,18 +340,15 @@ def coarsen_boundaries(domain: Domain, x0: typing.Tuple[float, float],
         x0projection: the coordinates system of x0.
         mesh_size: a function returning the desired mesh element size for given
             coordinates
-        sampling: should be (at least) two times smaller than the smallest
-            target mesh element size, otherwise the coarsening algorithm will
-            fail. This parameter will be removed (and determined automatically)
-            in the future.
     """
     x0 = _ensure_valid_points(np.array([x0]),x0projection,domain._projection)[0]
     sampled = []
     tags = []
     maxtag = 1
     str2tag = {}
+    mesh_size_half = lambda x,p : mesh_size(x,p)/2
     for curve in domain._curves :
-        cs = _curve_sample(curve, sampling)
+        cs = _curve_sample(curve, mesh_size_half, domain._projection)
         sampled.append(cs)
         if curve.tag not in str2tag :
             str2tag[curve.tag] = maxtag

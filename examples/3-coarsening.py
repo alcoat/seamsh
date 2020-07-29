@@ -63,11 +63,9 @@ def mesh_size(x,projection) :
 
 # %%
 # The geometry.coarsen_boundaries function requires in input the coordinates of one (any)
-# point which is inside the domain. The last parameters should be at least two times smaller
-# than the smallest value returned by the mesh_size callback, otherwise the resulting
-# geometry will be invalid.
+# point which is inside the domain.
 
-coarse = seamsh.geometry.coarsen_boundaries(domain,(6.21,42.95),lonlat,mesh_size,20)
+coarse = seamsh.geometry.coarsen_boundaries(domain,(6.21,42.95),lonlat,mesh_size)
 
 # %%
 # The resulting coarsened domain can be meshed normally.
