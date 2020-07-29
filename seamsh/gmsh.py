@@ -1,21 +1,21 @@
 # seamsh - Copyright (C) <2010-2020>
 # <Universite catholique de Louvain (UCL), Belgium
-# 	
+#
 # List of the contributors to the development of seamsh: see AUTHORS file.
 # Description and complete License: see LICENSE file.
-# 	
-# This program (seamsh) is free software: 
-# you can redistribute it and/or modify it under the terms of the GNU Lesser General 
-# Public License as published by the Free Software Foundation, either version
-# 3 of the License, or (at your option) any later version.
-# 
+#
+# This program (seamsh) is free software:
+# you can redistribute it and/or modify it under the terms of the GNU
+# Lesser General Public License as published by the Free Software Foundation,
+# either version 3 of the License, or (at your option) any later version.
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Lesser General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU Lesser General Public License
-# along with this program (see COPYING file).  If not, 
+# along with this program (see COPYING file).  If not,
 # see <http://www.gnu.org/licenses/>.
 
 import gmsh
@@ -113,9 +113,8 @@ def mesh(domain: Domain, filename: str, mesh_size: MeshSizeCallback,
         version: msh file version (typically 2.0 or 4.0)
         intermediate_file_name: if not None, save intermediate meshes to those
             files for debugging purpose (suffixes and extensions will be
-            appended), if == "-", an interactive gmsh graphical window will pop up
-            after each meshing step.
-
+            appended), if == "-", an interactive gmsh graphical window will pop
+            up after each meshing step.
     """
 
     domain._build_topology()
@@ -152,7 +151,7 @@ def mesh(domain: Domain, filename: str, mesh_size: MeshSizeCallback,
         physicals.setdefault(curve.tag, []).extend(tags)
     physicalspt = {}
     for point in domain._interior_points:
-        physicalspt.setdefault(point.tag,[]).append(point.pointid+1)
+        physicalspt.setdefault(point.tag, []).append(point.pointid+1)
     gmsh.model.geo.synchronize()
     gmsh.model.mesh.embed(1, embeded, 2, stag)
     gmsh.model.mesh.embed(
@@ -178,7 +177,8 @@ def mesh(domain: Domain, filename: str, mesh_size: MeshSizeCallback,
     # 1D mesh
     for i in range(nadapt1d):
         gmsh.model.mesh.generate(1)
-        if intermediate_file_name is not None and intermediate_file_name != "-":
+        if intermediate_file_name is not None \
+                and intermediate_file_name != "-":
             gmsh.write(intermediate_file_name+"_1d_"+str(i)+".msh")
         for (dim, tag) in gmsh.model.getEntities(1):
             _, x, u = gmsh.model.mesh.getNodes(dim, tag, True)
@@ -186,15 +186,15 @@ def mesh(domain: Domain, filename: str, mesh_size: MeshSizeCallback,
             gmsh.model.mesh.setSizeAtParametricPoints(dim, tag, u, size)
         gmsh.model.mesh.clear()
     gmsh.model.mesh.generate(1)
-    if intermediate_file_name is not None :
-        if intermediate_file_name == "-" :
+    if intermediate_file_name is not None:
+        if intermediate_file_name == "-":
             gmsh.fltk.run()
-        else :
+        else:
             gmsh.write(intermediate_file_name+"_1d.msh")
     # 2D mesh ##
     _, x, u = gmsh.model.mesh.getNodes()
-    x = x.reshape([-1,3])
-    initlc = np.linalg.norm(np.max(x,axis=0)-np.min(x,axis=0))/100
+    x = x.reshape([-1, 3])
+    initlc = np.linalg.norm(np.max(x, axis=0)-np.min(x, axis=0))/100
     gmsh.option.setNumber("Mesh.CharacteristicLengthExtendFromBoundary", 0)
     gmsh.option.setNumber("Mesh.CharacteristicLengthFromParametricPoints", 0)
     gmsh.option.setNumber("Mesh.CharacteristicLengthMin", initlc)
@@ -210,20 +210,22 @@ def mesh(domain: Domain, filename: str, mesh_size: MeshSizeCallback,
         nodes_map = dict({tag: i for i, tag in enumerate(node_tags)})
         sf_view = gmsh.view.add("mesh size field")
         node_lc = mesh_size(node_x, domain._projection)
-        etypes,etags,enodes = gmsh.model.mesh.getElements(2, stag)
-        for etype,enode in zip(etypes,enodes):
+        etypes, etags, enodes = gmsh.model.mesh.getElements(2, stag)
+        for etype, enode in zip(etypes, enodes):
             nn = 3 if etype == 2 else 4
             enode = list(nodes_map[t] for t in enode)
             enode = np.array(enode).reshape([-1, nn])
             xnode = node_x[enode, :].swapaxes(1, 2).reshape([-1, nn*3])
             data = np.column_stack([xnode, node_lc[enode]]).reshape([-1])
-            gmsh.view.addListData(sf_view, "ST"if etype == 2 else "SQ", enode.shape[0], data)
+            gmsh.view.addListData(sf_view, "ST"if etype == 2 else "SQ",
+                                  enode.shape[0], data)
         gmsh.model.mesh.field.setNumber(bg_field, "ViewTag", sf_view)
-        if intermediate_file_name is not None :
-            if intermediate_file_name == "-" :
+        if intermediate_file_name is not None:
+            if intermediate_file_name == "-":
                 gmsh.fltk.run()
-            else :
-                gmsh.view.write(sf_view,intermediate_file_name+"_2d_"+str(i)+".pos")
+            else:
+                gmsh.view.write(sf_view,
+                                intermediate_file_name+"_2d_"+str(i)+".pos")
         gmsh.model.mesh.generate(2)
         gmsh.view.remove(sf_view)
     gmsh.model.mesh.field.remove(bg_field)
@@ -232,7 +234,7 @@ def mesh(domain: Domain, filename: str, mesh_size: MeshSizeCallback,
 
 
 def convert_to_gis(input_filename: str, projection: osr.SpatialReference,
-        output_filename: str) ->None:
+                   output_filename: str) -> None:
     """ Converts a triangular gmsh mesh into shapefile or geopackage.
 
     Args:

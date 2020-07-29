@@ -1,21 +1,21 @@
 # seamsh - Copyright (C) <2010-2020>
 # <Universite catholique de Louvain (UCL), Belgium
-# 	
+#
 # List of the contributors to the development of seamsh: see AUTHORS file.
 # Description and complete License: see LICENSE file.
-# 	
-# This program (seamsh) is free software: 
-# you can redistribute it and/or modify it under the terms of the GNU Lesser General 
-# Public License as published by the Free Software Foundation, either version
-# 3 of the License, or (at your option) any later version.
-# 
+#
+# This program (seamsh) is free software:
+# you can redistribute it and/or modify it under the terms of the GNU
+# Lesser General Public License as published by the Free Software Foundation,
+# either version 3 of the License, or (at your option) any later version.
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Lesser General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU Lesser General Public License
-# along with this program (see COPYING file).  If not, 
+# along with this program (see COPYING file).  If not,
 # see <http://www.gnu.org/licenses/>.
 
 from osgeo import ogr, osr
@@ -28,7 +28,6 @@ import itertools
 import ctypes as c
 from enum import Enum
 import typing
-
 
 libdir = os.path.dirname(os.path.realpath(__file__))
 if platform.system() == "Windows":
@@ -100,7 +99,7 @@ class _Curve:
 
 
 class _Point:
-    def __init__(self,x,tag) :
+    def __init__(self, x, tag):
         self.tag = tag
         self.x = x
 
@@ -134,9 +133,10 @@ class Domain:
             curve.pointsid = unique_id[cid:cid+n]
             cid += n
         # assign points id for interior points
-        for point in self._interior_points :
+        for point in self._interior_points:
             point.pointid = unique_id[cid]
             cid += 1
+
         # break curves on repeated points
         def split_curves(curves, nbk):
             newcurves = []
@@ -237,7 +237,7 @@ class Domain:
             self._add_geometry(i.geometry(), phys, layerproj, curve_type,
                                interior, points)
 
-    def add_interior_points(self, points: np.ndarray, physical_tag : str,
+    def add_interior_points(self, points: np.ndarray, physical_tag: str,
                             projection: osr.SpatialReference) -> None:
         """ Add forced interior mesh points
 
@@ -247,7 +247,7 @@ class Domain:
             projection: the points coordinate system
         """
         x = _ensure_valid_points(points, projection, self._projection)
-        points = list(_Point(p,physical_tag) for p in x)
+        points = list(_Point(p, physical_tag) for p in x)
         self._interior_points += points
 
     def add_boundary_curve(self, points: np.ndarray, physical_tag: str,
@@ -324,9 +324,7 @@ class Domain:
         self._add_shapefile(filename, physical_name_field, False, False,
                             curve_type)
 
-
 from .gmsh import _curve_sample
-
 
 def coarsen_boundaries(domain: Domain, x0: typing.Tuple[float, float],
                        x0projection: osr.SpatialReference,
@@ -341,34 +339,37 @@ def coarsen_boundaries(domain: Domain, x0: typing.Tuple[float, float],
         mesh_size: a function returning the desired mesh element size for given
             coordinates
     """
-    x0 = _ensure_valid_points(np.array([x0]),x0projection,domain._projection)[0]
+    x0 = _ensure_valid_points(np.array([x0]), x0projection,
+                              domain._projection)[0]
     sampled = []
     tags = []
     maxtag = 1
     str2tag = {}
-    mesh_size_half = lambda x,p : mesh_size(x,p)/2
-    for curve in domain._curves :
+
+    def mesh_size_half(x, p):
+        return mesh_size(x, p)/2
+    for curve in domain._curves:
         cs = _curve_sample(curve, mesh_size_half, domain._projection)
         sampled.append(cs)
-        if curve.tag not in str2tag :
+        if curve.tag not in str2tag:
             str2tag[curve.tag] = maxtag
             maxtag += 1
-        tags.append(np.full(cs.shape[0],str2tag[curve.tag],dtype=np.int32))
+        tags.append(np.full(cs.shape[0], str2tag[curve.tag], dtype=np.int32))
     x = np.vstack(sampled)
     tags = np.concatenate(tags)
     x, unique_id, _ = _generate_unique_points(x)
-    utags = list([-1,-1] for i in x)
-    for i,tag  in zip(unique_id,tags) :
-        if utags[i][0] == -1 :
+    utags = list([-1, -1] for i in x)
+    for i, tag in zip(unique_id, tags):
+        if utags[i][0] == -1:
             utags[i][0] = tag
         found = False
         j = i
-        while j != -1 :
+        while j != -1:
             found |= utags[j][0] == tag
             j = utags[j][1]
-        if not found :
+        if not found:
             utags[j][1] = len(utags)
-        utags.append([tag,-1])
+        utags.append([tag, -1])
     tags = np.array(utags).reshape([-1])
     x = np.copy(x[:, :2])
     # avoid cocircular points
@@ -381,7 +382,7 @@ def coarsen_boundaries(domain: Domain, x0: typing.Tuple[float, float],
         r = c.c_void_p(tmp.ctypes.data)
         r.tmp = tmp
         return r
-    tri =  Delaunay(x)
+    tri = Delaunay(x)
     first = tri.find_simplex(x0)
     n_l = c.c_int()
     n_xo = c.c_int()
@@ -401,8 +402,8 @@ def coarsen_boundaries(domain: Domain, x0: typing.Tuple[float, float],
     lines = np.ctypeslib.frombuffer(linesbuf.contents, dtype=np.int32)
     odomain = Domain(domain._projection)
     breaks = np.where(lines == -1)[0]
-    tagi2str = dict((i,s) for (s,i) in str2tag.items())
-    for i, b in enumerate(breaks) :
+    tagi2str = dict((i, s) for (s, i) in str2tag.items())
+    for i, b in enumerate(breaks):
         ifrom = 0 if i == 0 else breaks[i-1]+1
         ito = breaks[i]
         tag = tagi2str[lines[ifrom]]
