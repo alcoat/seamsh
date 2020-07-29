@@ -347,7 +347,7 @@ def coarsen_boundaries(domain: Domain, x0: typing.Tuple[float, float],
     str2tag = {}
 
     def mesh_size_half(x, p):
-        return mesh_size(x, p)/2
+        return mesh_size(x, p)/3
     for curve in domain._curves:
         cs = _curve_sample(curve, mesh_size_half, domain._projection)
         sampled.append(cs)
