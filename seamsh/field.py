@@ -89,10 +89,10 @@ class Raster:
         src_ds = gdal.Open(filename)
         self._geo_matrix = src_ds.GetGeoTransform()
         self._data = src_ds.GetRasterBand(1).ReadAsArray()
-        assert(self._geo_matrix[2] == 0.)
-        assert(self._geo_matrix[4] == 0.)
         self._projection = osr.SpatialReference()
         self._projection.ImportFromWkt(src_ds.GetProjection())
+        if int(gdal.__version__.split(".")[0]) >= 3 :
+            self._projection.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
 
     def __call__(self, x: np.ndarray, projection: osr.SpatialReference
                  ) -> np.ndarray:
@@ -106,6 +106,8 @@ class Raster:
         """
         x = _ensure_valid_points(x, projection, self._projection)
         gm = self._geo_matrix
-        xi = (x[:, 0]-gm[3])/gm[5]
-        eta = (x[:, 1]-gm[0])/gm[1]
-        return self._data[xi.astype(int), eta.astype(int)]
+        lon,lat = x[:,0], x[:,1]
+        det = gm[5]*gm[1]-gm[2]*gm[4]
+        pixx = ((lon-gm[0])*gm[5]-(lat-gm[3])*gm[2])/det
+        pixy = ((lat-gm[3])*gm[1]-(lon-gm[0])*gm[4])/det
+        return self._data[pixy.astype(int), pixx.astype(int)]
