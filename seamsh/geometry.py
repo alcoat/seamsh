@@ -170,7 +170,6 @@ class Domain:
             p1[i1][1] = 1
         touched = np.full((len(self._curves)), False, np.bool)
         self._curveloops = []
-        count = 0
         try:
             for i, _ in enumerate(self._curves):
                 if touched[i]:
@@ -185,9 +184,9 @@ class Domain:
                         i, j = p2curve[p][0]
                     else:
                         i, j = p2curve[p][1]
+                    assert(not(i != self._curveloops[-1][0][0] and touched[i]))
                     touched[i] = True
                     assert(i != -1)
-                    count += 1
         except AssertionError:
             raise ValueError("Invalid topology")
         loopbboxarea = np.zeros([len(self._curveloops)])
@@ -208,7 +207,6 @@ class Domain:
         if onlypoints:
             self.add_interior_points(geometry.GetPoints(), tag, projection)
         else:
-            assert(geometry.GetGeometryType() == 2)
             if interior:
                 self.add_interior_curve(geometry.GetPoints(), tag,
                                         projection, curve_type)
@@ -218,7 +216,10 @@ class Domain:
 
     def _add_shapefile(self, filename, physical_name_field,
                        interior, points, curve_type):
-        driver = ogr.GetDriverByName('ESRI Shapefile')
+        if filename[-5:] == ".gpkg" :
+            driver = ogr.GetDriverByName('GPKG')
+        else :
+            driver = ogr.GetDriverByName('ESRI Shapefile')
         data = driver.Open(filename, 0)
         layer = data.GetLayer()
         layerdef = layer.GetLayerDefn()
@@ -347,7 +348,7 @@ def coarsen_boundaries(domain: Domain, x0: typing.Tuple[float, float],
     str2tag = {}
 
     def mesh_size_half(x, p):
-        return mesh_size(x, p)/3
+        return mesh_size(x, p)*0.5
     for curve in domain._curves:
         cs = _curve_sample(curve, mesh_size_half, domain._projection)
         sampled.append(cs)
@@ -384,6 +385,8 @@ def coarsen_boundaries(domain: Domain, x0: typing.Tuple[float, float],
         return r
     tri = Delaunay(x)
     first = tri.find_simplex(x0)
+    if (first == -1):
+        raise(ValueError("First point outside domain"))
     n_l = c.c_int()
     n_xo = c.c_int()
     p_xo = c.POINTER(c.c_double)()
