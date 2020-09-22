@@ -138,23 +138,36 @@ class Domain:
             cid += 1
 
         # break curves on repeated points
-        def split_curves(curves, nbk):
+        def split_curves(curves, nbk, loops=[]):
             newcurves = []
+            newmap = []
             for curve in curves:
                 breaks = np.where(curve.pointsid[1:-1] < nbk)[0]
                 if len(breaks) == 0:
                     newcurves.append(curve)
+                    newmap.append([len(newcurves)-1])
                 else:
                     breaks = [0] + list(breaks+1) + [len(curve.points)-1]
+                    nc = []
                     for i, j in zip(breaks[:-1], breaks[1:]):
                         ncurve = _Curve(
                             curve.points[i:j+1], curve.tag, curve.curve_type)
                         ncurve.pointsid = curve.pointsid[i:j+1]
                         newcurves.append(ncurve)
+                        nc.append(len(newcurves)-1)
+                    newmap.append(nc)
+            for iloop, loop in enumerate(loops) :
+                newloop = []
+                for oi, ori in loop:
+                    if ori : 
+                        for j in newmap[oi] :
+                            newloop.append((j,ori))
+                    else :
+                        for j in reversed(newmap[oi]) :
+                            newloop.append((j,ori))
+                loops[iloop] = newloop
             return newcurves
-        self._curves = split_curves(self._curves, nbreakpoints)
-        self._interior_curves = split_curves(
-            self._interior_curves, nbreakpoints)
+
         p2curve = np.full([self._points.shape[0], 2, 2], -1, int)
         curve2p = np.ndarray([len(self._curves), 2], int)
         for icurve, curve in enumerate(self._curves):
@@ -189,6 +202,9 @@ class Domain:
                     assert(i != -1)
         except AssertionError:
             raise ValueError("Invalid topology")
+        self._curves = split_curves(self._curves, nbreakpoints, self._curveloops)
+        self._interior_curves = split_curves(
+            self._interior_curves, nbreakpoints)
         loopbboxarea = np.zeros([len(self._curveloops)])
         for i, loop in enumerate(self._curveloops):
             lpts = np.row_stack([self._curves[j].points for j, o in loop])
