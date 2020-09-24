@@ -28,6 +28,7 @@ import itertools
 import ctypes as c
 from enum import Enum
 import typing
+import sys
 
 libdir = os.path.dirname(os.path.realpath(__file__))
 if platform.system() == "Windows":
@@ -202,9 +203,9 @@ class Domain:
                     assert(i != -1)
         except AssertionError:
             raise ValueError("Invalid topology")
-        self._curves = split_curves(self._curves, nbreakpoints, self._curveloops)
-        self._interior_curves = split_curves(
-            self._interior_curves, nbreakpoints)
+        #self._curves = split_curves(self._curves, nbreakpoints, self._curveloops)
+        #self._interior_curves = split_curves(
+        #    self._interior_curves, nbreakpoints)
         loopbboxarea = np.zeros([len(self._curveloops)])
         for i, loop in enumerate(self._curveloops):
             lpts = np.row_stack([self._curves[j].points for j, o in loop])
@@ -232,6 +233,7 @@ class Domain:
 
     def _add_shapefile(self, filename, physical_name_field,
                        interior, points, curve_type):
+        print("importing features from '{}'\n".format(filename))
         if filename[-5:] == ".gpkg" :
             driver = ogr.GetDriverByName('GPKG')
         else :
@@ -240,6 +242,7 @@ class Domain:
         layer = data.GetLayer()
         layerdef = layer.GetLayerDefn()
         physfield = None
+        count = 0
         if physical_name_field is not None:
             for i in range(layerdef.GetFieldCount()):
                 field_name = layerdef.GetFieldDefn(i).GetName()
@@ -253,6 +256,9 @@ class Domain:
             phys = i.GetField(physfield) if physfield else "boundary"
             self._add_geometry(i.geometry(), phys, layerproj, curve_type,
                                interior, points)
+            _lineup()
+            print("{} features imported".format(count))
+            count += 1
 
     def add_interior_points(self, points: np.ndarray, physical_tag: str,
                             projection: osr.SpatialReference) -> None:
@@ -343,6 +349,12 @@ class Domain:
 
 from .gmsh import _curve_sample
 
+
+def _lineup() :
+    if sys.stdout.isatty() :
+        print("\033[F\033[K",end="") # Cursor up one line and clear
+
+import time
 def coarsen_boundaries(domain: Domain, x0: typing.Tuple[float, float],
                        x0projection: osr.SpatialReference,
                        mesh_size: MeshSizeCallback) -> Domain:
@@ -364,15 +376,21 @@ def coarsen_boundaries(domain: Domain, x0: typing.Tuple[float, float],
     str2tag = {}
 
     def mesh_size_half(x, p):
-        return mesh_size(x, p)*0.25
+        return mesh_size(x, p)*0.5
 
-    for curve in domain._curves:
+    ncurves = len(domain._curves)
+    print("")
+    tic = time.time()
+    for icurve, curve in enumerate(domain._curves):
+        _lineup()
+        print("sampling curve {}/{}".format(icurve,ncurves))
         cs = _curve_sample(curve, mesh_size_half, domain._projection)
         sampled.append(cs)
         if curve.tag not in str2tag:
             str2tag[curve.tag] = maxtag
             maxtag += 1
         tags.append(np.full(cs.shape[0], str2tag[curve.tag], dtype=np.int32))
+    print("time : ", time.time()-tic)
     x = np.vstack(sampled)
     tags = np.concatenate(tags)
     x, unique_id, _ = _generate_unique_points(x)
