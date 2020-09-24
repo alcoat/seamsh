@@ -478,7 +478,6 @@ static void orient_triangles(const double *x, int n_tri, int *tri) {
   }
 }
 
-
 static int *color_triangles(const double *x, int n_tri, const int *tri, const int *neigh, int first, const double *length) {
   int *tri_color = malloc(sizeof(int)*n_tri);
   for (int i=0; i<n_tri; ++i) {
@@ -498,7 +497,7 @@ static int *color_triangles(const double *x, int n_tri, const int *tri, const in
         const double *p0 = x+2*i0;
         const double *p1 = x+2*i1;
         double d2 = (p1[0]-p0[0])*(p1[0]-p0[0])+(p1[1]-p0[1])*(p1[1]-p0[1]);
-        double lmin = fmin(length[i0],length[i1]);
+        double lmin = fmin(length[i0],length[i1])*1.2;//*1.1;
         if(d2 > lmin*lmin) {
           tri_color[n] = 1;
           stack[++stack_p] = n;
