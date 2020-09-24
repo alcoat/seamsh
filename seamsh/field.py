@@ -56,6 +56,9 @@ class Distance:
         for curve in itertools.chain(domain._curves, domain._interior_curves):
             if (tags is None) or (curve.tag in tags):
                 points.append(_curve_sample_fix(curve, sampling))
+        for point in itertools.chain(domain._interior_points):
+            if (tags is None) or (point.tag in tags):
+                points.append(point.x)
         points = np.vstack(points)
         self._tree = cKDTree(points)
         self._projection = domain._projection
