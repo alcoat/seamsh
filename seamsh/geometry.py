@@ -41,10 +41,15 @@ else:
 lib = c.CDLL(libpath)
 
 
+_transform_cache = {}
 def _ensure_valid_points(x, pfrom, pto):
     x = np.asarray(x)[:, :2]
     if not pfrom.IsSame(pto):
-        x = osr.CoordinateTransformation(pfrom, pto).TransformPoints(x)
+        trans = _transform_cache.get((pfrom,pto),None)
+        if trans is None :
+            trans = osr.CoordinateTransformation(pfrom, pto)
+            _transform_cache[(pfrom,pto)] = trans
+        x = trans.TransformPoints(x)
         x = np.asarray(x)[:, :2]
     return x
 
@@ -243,6 +248,7 @@ class Domain:
         layerdef = layer.GetLayerDefn()
         physfield = None
         count = 0
+        tic = time.time()
         if physical_name_field is not None:
             for i in range(layerdef.GetFieldCount()):
                 field_name = layerdef.GetFieldDefn(i).GetName()
@@ -259,6 +265,7 @@ class Domain:
             _lineup()
             print("{} features imported".format(count))
             count += 1
+        print("time : ",time.time()-tic)
 
     def add_interior_points(self, points: np.ndarray, physical_tag: str,
                             projection: osr.SpatialReference) -> None:
