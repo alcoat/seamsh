@@ -264,7 +264,7 @@ class Domain:
                                  "' not found in shapefile")
         layerproj = layer.GetSpatialRef()
         for i in layer:
-            phys = i.GetField(physfield) if physfield else "boundary"
+            phys = i.GetField(physfield) if not (physfield is None) else "boundary"
             self._add_geometry(i.geometry(), phys, layerproj, curve_type,
                                interior, points)
             _lineup()
