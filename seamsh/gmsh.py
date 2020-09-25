@@ -30,8 +30,14 @@ import atexit
 
 gmsh.initialize()
 gmsh.option.setNumber("General.Terminal", 1)
+gmsh.option.setNumber("General.Verbosity",2)
+
 GmshOptionValue = typing.Union[float, str, typing.Tuple[float, float, float]]
 
+import sys
+def _lineup() :
+    if sys.stdout.isatty() :
+        print("\033[F\033[K",end="") # Cursor up one line and clear
 
 def _gmsh_curve_geo(curve_type: CurveType, pointsid):
     pts = list(i+1 for i in pointsid)
@@ -48,7 +54,29 @@ def _gmsh_curve_geo(curve_type: CurveType, pointsid):
         raise ValueError("unknown curve_type '%s'" % curve_type)
 
 
-def _curve_sample_fix(curve, lc):
+def _curve_sample_gmsh_tag(tag, lc, projection):
+    bounds = gmsh.model.getParametrizationBounds(1,tag)
+    xi = np.linspace(bounds[0][0],bounds[1][0],5)
+    count = 0
+    x = gmsh.model.getValue(1,tag,xi).reshape([-1,3])
+    size = lc(x,projection)
+    while True :
+        count += 1
+        dist  = np.linalg.norm(x[1:,:]-x[:-1,:],axis=1)
+        target = np.minimum(size[1:],size[:-1])
+        if not np.any(target<dist) :
+            break
+        exi = (xi[1:][target<dist]+xi[:-1][target<dist])/2
+        ex = gmsh.model.getValue(1,tag,exi).reshape([-1,3])
+        esize = lc(ex,projection)
+        xi = np.hstack([xi,exi])
+        s = np.argsort(xi)
+        xi = xi[s]
+        x = np.row_stack([x,ex])[s,:]
+        size = np.hstack([size,esize])[s]
+    return x[:,:2], xi, size
+
+def _curve_sample_full(curve, lc, projection):
     gmsh.model.add(str(uuid.uuid4()))
     tags = list([gmsh.model.geo.addPoint(*x, 0) -
                  1 for x in curve.points[:-1, :]])
@@ -58,48 +86,30 @@ def _curve_sample_fix(curve, lc):
         tags.append(gmsh.model.geo.addPoint(*curve.points[-1, :], 0)-1)
     ltag = _gmsh_curve_geo(curve.curve_type, tags)
     gmsh.model.geo.synchronize()
-    gmsh.option.setNumber("Mesh.LcIntegrationPrecision", 1e-3)
-    gmsh.option.setNumber("Mesh.CharacteristicLengthMin", lc)
-    gmsh.option.setNumber("Mesh.CharacteristicLengthMax", lc)
-    gmsh.model.mesh.generate(1)
-    nodes = gmsh.model.mesh.getNodes(1, ltag[0], includeBoundary=True)[
-        1].reshape([-1, 3])
-    gmsh.option.setNumber("Mesh.CharacteristicLengthMin", 0)
-    gmsh.option.setNumber("Mesh.CharacteristicLengthMax", 1e22)
+    bounds = gmsh.model.getParametrizationBounds(1,ltag[0])
+    xi = np.linspace(bounds[0][0],bounds[1][0],5)
+    count = 0
+    x = gmsh.model.getValue(1,ltag[0],xi).reshape([-1,3])
+    size = lc(x,projection)
+    while True :
+        count += 1
+        dist  = np.linalg.norm(x[1:,:]-x[:-1,:],axis=1)
+        target = np.minimum(size[1:],size[:-1])
+        if not np.any(target<dist) :
+            break
+        exi = (xi[1:][target<dist]+xi[:-1][target<dist])/2
+        ex = gmsh.model.getValue(1,ltag[0],exi).reshape([-1,3])
+        esize = lc(ex,projection)
+        xi = np.hstack([xi,exi])
+        s = np.argsort(xi)
+        xi = xi[s]
+        x = np.row_stack([x,ex])[s,:]
+        size = np.hstack([size,esize])[s]
     gmsh.model.remove()
-    return nodes[:, :2]
-
+    return x[:,:2], xi, size
 
 def _curve_sample(curve, lc, projection):
-    gmsh.option.setNumber("Mesh.CharacteristicLengthFromPoints", 0)
-    gmsh.option.setNumber("Mesh.LcIntegrationPrecision", 1e-3)
-    gmsh.option.setNumber("Mesh.CharacteristicLengthFactor", 1)
-    gmsh.option.setNumber("Mesh.CharacteristicLengthFromCurvature", 0)
-    gmsh.option.setNumber("Mesh.CharacteristicLengthExtendFromBoundary", 0)
-    gmsh.option.setNumber("Mesh.CharacteristicLengthFromParametricPoints",
-                          1)
-    gmsh.model.add(str(uuid.uuid4()))
-    tags = list([gmsh.model.geo.addPoint(*x, 0) -
-                 1 for x in curve.points[:-1, :]])
-    if np.linalg.norm(curve.points[0, :]-curve.points[-1, :]) < 1e-8:
-        tags.append(tags[0])
-    else:
-        tags.append(gmsh.model.geo.addPoint(*curve.points[-1, :], 0)-1)
-    ltag = _gmsh_curve_geo(curve.curve_type, tags)
-    gmsh.model.geo.synchronize()
-    nadapt1d = 3
-    for i in range(nadapt1d):
-        gmsh.model.mesh.generate(1)
-        for (dim, tag) in gmsh.model.getEntities(1):
-            _, x, u = gmsh.model.mesh.getNodes(dim, tag, True)
-            size = lc(x.reshape([-1, 3]), projection)
-            gmsh.model.mesh.setSizeAtParametricPoints(dim, tag, u, size)
-        gmsh.model.mesh.clear()
-    gmsh.model.mesh.generate(1)
-    nodes = gmsh.model.mesh.getNodes(1, ltag[0], includeBoundary=True)[
-        1].reshape([-1, 3])
-    gmsh.model.remove()
-    return nodes[:, :2]
+    return _curve_sample_full(curve, lc, projection)[0]
 
 
 def mesh(domain: Domain, filename: str, mesh_size: MeshSizeCallback,
@@ -119,11 +129,10 @@ def mesh(domain: Domain, filename: str, mesh_size: MeshSizeCallback,
 
     domain._build_topology()
     nadapt = 3
-    nadapt1d = 4
     for curve in domain._curves:
         curve.mesh_size = mesh_size(curve.points, domain._projection)
     gmsh.option.setNumber("Mesh.CharacteristicLengthFromPoints", 0)
-    gmsh.option.setNumber("Mesh.LcIntegrationPrecision", 1e-3)
+    gmsh.option.setNumber("Mesh.LcIntegrationPrecision", 1e-5)
     gmsh.option.setNumber("Mesh.CharacteristicLengthFactor", 1)
     gmsh.option.setNumber("Mesh.CharacteristicLengthFromCurvature", 0)
     gmsh.option.setNumber("Mesh.CharacteristicLengthExtendFromBoundary", 0)
@@ -156,16 +165,6 @@ def mesh(domain: Domain, filename: str, mesh_size: MeshSizeCallback,
     gmsh.model.mesh.embed(1, embeded, 2, stag)
     gmsh.model.mesh.embed(
         0, [p.pointid+1 for p in domain._interior_points], 2, stag)
-    it = 0
-    for cl in domain._curveloops:
-        for i, (l, o) in enumerate(cl):
-            curve = domain._curves[l]
-            sizes = curve.mesh_size if o else np.flip(curve.mesh_size)
-            u0, u1 = gmsh.model.getParametrizationBounds(1, abs(ctags[it]))
-            u = np.linspace(u0, u1, curve.points.shape[0])
-            gmsh.model.mesh.setSizeAtParametricPoints(
-                1, ctags[it], u, sizes)
-            it += 1
     for name, tags in physicals.items():
         tag = gmsh.model.addPhysicalGroup(1, tags)
         gmsh.model.setPhysicalName(1, tag, name)
@@ -175,16 +174,12 @@ def mesh(domain: Domain, filename: str, mesh_size: MeshSizeCallback,
     tag = gmsh.model.addPhysicalGroup(2, [stag])
     gmsh.model.setPhysicalName(2, stag, "domain")
     # 1D mesh
-    for i in range(nadapt1d):
-        gmsh.model.mesh.generate(1)
-        if intermediate_file_name is not None \
-                and intermediate_file_name != "-":
-            gmsh.write(intermediate_file_name+"_1d_"+str(i)+".msh")
-        for (dim, tag) in gmsh.model.getEntities(1):
-            _, x, u = gmsh.model.mesh.getNodes(dim, tag, True)
-            size = mesh_size(x.reshape([-1, 3]), domain._projection)
-            gmsh.model.mesh.setSizeAtParametricPoints(dim, tag, u, size)
-        gmsh.model.mesh.clear()
+    bounds = gmsh.model.getParametrizationBounds(1,2)
+    for icurve,(dim, tag) in enumerate(gmsh.model.getEntities(1)) :
+        _lineup()
+        print("sample curve for mesh_size",icurve,dim,tag);
+        _, xi, size = _curve_sample_gmsh_tag(tag, lambda x,p : mesh_size(x,p)/2, domain._projection)
+        gmsh.model.mesh.setSizeAtParametricPoints(dim, tag, xi, size*2)
     gmsh.model.mesh.generate(1)
     if intermediate_file_name is not None:
         if intermediate_file_name == "-":

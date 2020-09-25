@@ -25,7 +25,9 @@ from scipy.spatial import cKDTree
 import logging
 from typing import List
 import itertools
-from .gmsh import _curve_sample_fix
+from .gmsh import _curve_sample
+import sys
+import time
 
 
 def _ensure_valid_points(x, pfrom, pto):
@@ -34,6 +36,10 @@ def _ensure_valid_points(x, pfrom, pto):
         x = osr.CoordinateTransformation(pfrom, pto).TransformPoints(x)
         x = np.asarray(x)
     return x
+
+def _lineup() :
+    if sys.stdout.isatty() :
+        print("\033[F\033[K",end="") # Cursor up one line and clear
 
 
 class Distance:
@@ -53,12 +59,18 @@ class Distance:
                 if None, all curves are taken into account.
         """
         points = []
-        for curve in itertools.chain(domain._curves, domain._interior_curves):
+        print("")
+        tic = time.time()
+        for icurve,curve in enumerate(itertools.chain(domain._curves, domain._interior_curves)):
             if (tags is None) or (curve.tag in tags):
-                points.append(_curve_sample_fix(curve, sampling))
+                _lineup()
+                print("sampling curve {} for distance computation".format(icurve))
+                points.append(_curve_sample(curve, lambda x,proj : np.full([x.shape[0]],sampling),
+                              None))
         for point in itertools.chain(domain._interior_points):
             if (tags is None) or (point.tag in tags):
                 points.append(point.x)
+        print("time : ",time.time()-tic)
         points = np.vstack(points)
         self._tree = cKDTree(points)
         self._projection = domain._projection
