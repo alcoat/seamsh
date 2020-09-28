@@ -18,28 +18,9 @@
 # along with this program (see COPYING file).  If not,
 # see <http://www.gnu.org/licenses/>.
 
-from .geometry import Domain
-import numpy as np
-from osgeo import osr, gdal
-from scipy.spatial import cKDTree
-import logging
-from typing import List
-import itertools
+from . import _tools
+from .geometry import Domain as _Domain
 from .gmsh import _curve_sample
-import sys
-import time
-
-
-def _ensure_valid_points(x, pfrom, pto):
-    x = np.asarray(x)[:, :2]
-    if not pfrom.IsSame(pto):
-        x = osr.CoordinateTransformation(pfrom, pto).TransformPoints(x)
-        x = np.asarray(x)
-    return x
-
-def _lineup() :
-    if sys.stdout.isatty() :
-        print("\033[F\033[K",end="") # Cursor up one line and clear
 
 
 class Distance:
@@ -49,8 +30,8 @@ class Distance:
     closest point is computed.
     """
 
-    def __init__(self, domain: Domain, sampling: float,
-                 tags: List[str] = None):
+    def __init__(self, domain: _Domain, sampling: float,
+                 tags: _tools.List[str] = None):
         """
         Args:
             domain: a Domain object containing the set of curves
@@ -58,25 +39,25 @@ class Distance:
             tags: List of physical tags specifying the curve from the domain.
                 if None, all curves are taken into account.
         """
+        _tools.log("Create distance field", True)
         points = []
-        print("")
-        tic = time.time()
-        for icurve,curve in enumerate(itertools.chain(domain._curves, domain._interior_curves)):
+        progress = _tools.ProgressLog("Sampling features for distance computation")
+        for icurve,curve in enumerate(_tools.chain(domain._curves, domain._interior_curves)):
             if (tags is None) or (curve.tag in tags):
-                _lineup()
-                print("sampling curve {} for distance computation".format(icurve))
-                points.append(_curve_sample(curve, lambda x,proj : np.full([x.shape[0]],sampling),
+                points.append(_curve_sample(curve, lambda x,proj : _tools.np.full([x.shape[0]],sampling),
                               None))
-        for point in itertools.chain(domain._interior_points):
+                progress.log("{} features sampled".format(icurve+1))
+        for point in _tools.chain(domain._interior_points):
             if (tags is None) or (point.tag in tags):
                 points.append(point.x)
-        print("time : ",time.time()-tic)
-        points = np.vstack(points)
-        self._tree = cKDTree(points)
+        progress.end()
+        points = _tools.np.vstack(points)
+        _tools.log("Build KDTree with {} points".format(points.shape[0]))
+        self._tree = _tools.cKDTree(points)
         self._projection = domain._projection
 
-    def __call__(self, x: np.ndarray, projection: osr.SpatialReference
-                 ) -> np.ndarray:
+    def __call__(self, x: _tools.np.ndarray, projection: _tools.osr.SpatialReference
+                 ) -> _tools.np.ndarray:
         """Computes the distance between each point of x and the curves.
 
         Args:
@@ -101,16 +82,17 @@ class Raster:
         Args:
             filename: A geotiff file or any other raster supported by gdal.
         """
-        src_ds = gdal.Open(filename)
+        _tools.log("Create field from raster file \"{}\"".format(filename), True)
+        src_ds = _tools.gdal.Open(filename)
         self._geo_matrix = src_ds.GetGeoTransform()
         self._data = src_ds.GetRasterBand(1).ReadAsArray()
-        self._projection = osr.SpatialReference()
+        self._projection = _tools.osr.SpatialReference()
         self._projection.ImportFromWkt(src_ds.GetProjection())
-        if int(gdal.__version__.split(".")[0]) >= 3 :
-            self._projection.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+        if int(_tools.gdal.__version__.split(".")[0]) >= 3 :
+            self._projection.SetAxisMappingStrategy(_tools.osr.OAMS_TRADITIONAL_GIS_ORDER)
 
-    def __call__(self, x: np.ndarray, projection: osr.SpatialReference
-                 ) -> np.ndarray:
+    def __call__(self, x: _tools.np.ndarray, projection: _tools.osr.SpatialReference
+                 ) -> _tools.np.ndarray:
         """Evaluates the field value on each point of x.
 
         Keyword arguments:
@@ -119,7 +101,7 @@ class Raster:
         Returns:
             The field value on points x. [n]
         """
-        x = _ensure_valid_points(x, projection, self._projection)
+        x = _tools.ensure_valid_points(x, projection, self._projection)
         gm = self._geo_matrix
         lon,lat = x[:,0], x[:,1]
         det = gm[5]*gm[1]-gm[2]*gm[4]
