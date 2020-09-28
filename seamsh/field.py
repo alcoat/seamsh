@@ -41,11 +41,16 @@ class Distance:
         """
         _tools.log("Create distance field", True)
         points = []
-        progress = _tools.ProgressLog("Sampling features for distance computation")
-        for icurve,curve in enumerate(_tools.chain(domain._curves, domain._interior_curves)):
+        msg = "Sampling features for distance computation"
+        progress = _tools.ProgressLog(msg)
+        all_curves_iter = _tools.chain(domain._curves, domain._interior_curves)
+
+        def size(x, proj):
+            return _tools.np.full([x.shape[0]], sampling)
+
+        for icurve, curve in enumerate(all_curves_iter):
             if (tags is None) or (curve.tag in tags):
-                points.append(_curve_sample(curve, lambda x,proj : _tools.np.full([x.shape[0]],sampling),
-                              None))
+                points.append(_curve_sample(curve, size, None))
                 progress.log("{} features sampled".format(icurve+1))
         for point in _tools.chain(domain._interior_points):
             if (tags is None) or (point.tag in tags):
@@ -56,7 +61,8 @@ class Distance:
         self._tree = _tools.cKDTree(points)
         self._projection = domain._projection
 
-    def __call__(self, x: _tools.np.ndarray, projection: _tools.osr.SpatialReference
+    def __call__(self, x: _tools.np.ndarray,
+                 projection: _tools.osr.SpatialReference
                  ) -> _tools.np.ndarray:
         """Computes the distance between each point of x and the curves.
 
@@ -82,16 +88,19 @@ class Raster:
         Args:
             filename: A geotiff file or any other raster supported by gdal.
         """
-        _tools.log("Create field from raster file \"{}\"".format(filename), True)
+        msg = "Create field from raster file \"{}\"".format(filename)
+        _tools.log(msg, True)
         src_ds = _tools.gdal.Open(filename)
         self._geo_matrix = src_ds.GetGeoTransform()
         self._data = src_ds.GetRasterBand(1).ReadAsArray()
         self._projection = _tools.osr.SpatialReference()
         self._projection.ImportFromWkt(src_ds.GetProjection())
-        if int(_tools.gdal.__version__.split(".")[0]) >= 3 :
-            self._projection.SetAxisMappingStrategy(_tools.osr.OAMS_TRADITIONAL_GIS_ORDER)
+        if int(_tools.gdal.__version__.split(".")[0]) >= 3:
+            order = _tools.osr.OAMS_TRADITIONAL_GIS_ORDER
+            self._projection.SetAxisMappingStrategy(order)
 
-    def __call__(self, x: _tools.np.ndarray, projection: _tools.osr.SpatialReference
+    def __call__(self, x: _tools.np.ndarray,
+                 projection: _tools.osr.SpatialReference
                  ) -> _tools.np.ndarray:
         """Evaluates the field value on each point of x.
 
@@ -101,9 +110,9 @@ class Raster:
         Returns:
             The field value on points x. [n]
         """
-        x = _tools.ensure_valid_points(x, projection, self._projection)
+        x = _tools.project_points(x, projection, self._projection)
         gm = self._geo_matrix
-        lon,lat = x[:,0], x[:,1]
+        lon, lat = x[:, 0], x[:, 1]
         det = gm[5]*gm[1]-gm[2]*gm[4]
         pixx = ((lon-gm[0])*gm[5]-(lat-gm[3])*gm[2])/det
         pixy = ((lat-gm[3])*gm[1]-(lon-gm[0])*gm[4])/det

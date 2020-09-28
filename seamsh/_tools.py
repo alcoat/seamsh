@@ -35,39 +35,41 @@ import platform
 import ctypes as c
 
 
-def log(txt, title=False) :
+def log(txt, title=False):
     decorator = " * " if title else ""
     print(decorator+txt+decorator)
 
 
-class ProgressLog :
+class ProgressLog:
 
-    def __init__(self, msg, title=False) :
+    def __init__(self, msg, title=False):
         self._tic = time.time()
         self._last_msg = ""
         log(msg, title)
-        if sys.stdout.isatty() :
+        if sys.stdout.isatty():
             print("")
 
-    def log(self, msg) :
-        if sys.stdout.isatty() :
-            print("\033[F\033[K",end="") # Cursor up one line and clear
-            print(msg + " (%.1fs)"%(time.time()-self._tic))
+    def log(self, msg):
+        if sys.stdout.isatty():
+            print("\033[F\033[K", end="")  # Cursor up one line and clear
+            print(msg + " (%.1fs)" % (time.time()-self._tic))
         self._last_msg = msg
 
-    def end(self) :
-        if not sys.stdout.isatty() :
+    def end(self):
+        if not sys.stdout.isatty():
             print(self._last_msg)
 
 
 _transform_cache = {}
-def ensure_valid_points(x, pfrom, pto):
+
+
+def project_points(x, pfrom, pto):
     x = np.asarray(x)[:, :2]
     if not pfrom.IsSame(pto):
-        trans = _transform_cache.get((pfrom,pto),None)
-        if trans is None :
+        trans = _transform_cache.get((pfrom, pto), None)
+        if trans is None:
             trans = osr.CoordinateTransformation(pfrom, pto)
-            _transform_cache[(pfrom,pto)] = trans
+            _transform_cache[(pfrom, pto)] = trans
         x = trans.TransformPoints(x)
         x = np.asarray(x)[:, :2]
     return x
@@ -82,6 +84,7 @@ else:
     libpath = os.path.join(libdir, "libseamsh.so")
 
 lib = c.CDLL(libpath)
+
 
 def np2c(a, dtype=np.float64):
     tmp = np.require(a, dtype, "C")

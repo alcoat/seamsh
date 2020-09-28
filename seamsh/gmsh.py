@@ -26,7 +26,7 @@ __all__ = ["mesh", "convert_to_gis"]
 
 gmsh.initialize()
 gmsh.option.setNumber("General.Terminal", 1)
-gmsh.option.setNumber("General.Verbosity",2)
+gmsh.option.setNumber("General.Verbosity", 2)
 
 
 def _gmsh_curve_geo(curve_type: _geometry.CurveType, pointsid):
@@ -45,26 +45,26 @@ def _gmsh_curve_geo(curve_type: _geometry.CurveType, pointsid):
 
 
 def _curve_sample_gmsh_tag(tag, lc, projection):
-    bounds = gmsh.model.getParametrizationBounds(1,tag)
-    xi = _tools.np.linspace(bounds[0][0],bounds[1][0],5)
+    bounds = gmsh.model.getParametrizationBounds(1, tag)
+    xi = _tools.np.linspace(bounds[0][0], bounds[1][0], 5)
     count = 0
-    x = gmsh.model.getValue(1,tag,xi).reshape([-1,3])
-    size = lc(x,projection)
-    while True :
+    x = gmsh.model.getValue(1, tag, xi).reshape([-1, 3])
+    size = lc(x, projection)
+    while True:
         count += 1
-        dist  = _tools.np.linalg.norm(x[1:,:]-x[:-1,:],axis=1)
-        target = _tools.np.minimum(size[1:],size[:-1])
-        if not _tools.np.any(target<dist) :
+        dist = _tools.np.linalg.norm(x[1:, :]-x[:-1, :], axis=1)
+        target = _tools.np.minimum(size[1:], size[:-1])
+        if not _tools.np.any(target < dist):
             break
-        exi = (xi[1:][target<dist]+xi[:-1][target<dist])/2
-        ex = gmsh.model.getValue(1,tag,exi).reshape([-1,3])
-        esize = lc(ex,projection)
-        xi = _tools.np.hstack([xi,exi])
+        exi = (xi[1:][target < dist]+xi[:-1][target < dist])/2
+        ex = gmsh.model.getValue(1, tag, exi).reshape([-1, 3])
+        esize = lc(ex, projection)
+        xi = _tools.np.hstack([xi, exi])
         s = _tools.np.argsort(xi)
         xi = xi[s]
-        x = _tools.np.row_stack([x,ex])[s,:]
-        size = _tools.np.hstack([size,esize])[s]
-    return x[:,:2], xi, size
+        x = _tools.np.row_stack([x, ex])[s, :]
+        size = _tools.np.hstack([size, esize])[s]
+    return x[:, :2], xi, size
 
 
 def _curve_sample(curve, lc, projection):
@@ -82,7 +82,8 @@ def _curve_sample(curve, lc, projection):
     return r
 
 
-def mesh(domain: _geometry.Domain, filename: str, mesh_size: _geometry.MeshSizeCallback,
+def mesh(domain: _geometry.Domain, filename: str,
+         mesh_size: _geometry.MeshSizeCallback,
          version: float = 4.0, intermediate_file_name: str = None) -> None:
     """ Calls gmsh to generate a mesh from a geometry and a mesh size callback
 
@@ -146,9 +147,11 @@ def mesh(domain: _geometry.Domain, filename: str, mesh_size: _geometry.MeshSizeC
     gmsh.model.setPhysicalName(2, stag, "domain")
     # 1D mesh
     progress = _tools.ProgressLog("Sample curves for mesh size")
-    bounds = gmsh.model.getParametrizationBounds(1,2)
-    for icurve,(dim, tag) in enumerate(gmsh.model.getEntities(1)) :
-        _, xi, size = _curve_sample_gmsh_tag(tag, lambda x,p : mesh_size(x,p)/2, domain._projection)
+    bounds = gmsh.model.getParametrizationBounds(1, 2)
+    for icurve, (dim, tag) in enumerate(gmsh.model.getEntities(1)):
+        _, xi, size = _curve_sample_gmsh_tag(tag,
+                                             lambda x, p: mesh_size(x, p)/2,
+                                             domain._projection)
         gmsh.model.mesh.setSizeAtParametricPoints(dim, tag, xi, size*2)
         progress.log("{} curve sampled".format(icurve+1))
     progress.end()
@@ -163,7 +166,8 @@ def mesh(domain: _geometry.Domain, filename: str, mesh_size: _geometry.MeshSizeC
     _tools.log("Generate initial 2D mesh")
     _, x, u = gmsh.model.mesh.getNodes()
     x = x.reshape([-1, 3])
-    initlc = _tools.np.linalg.norm(_tools.np.max(x, axis=0)-_tools.np.min(x, axis=0))/100
+    domain_size = _tools.np.max(x, axis=0)-_tools.np.min(x, axis=0)
+    initlc = _tools.np.linalg.norm(domain_size)/100
     gmsh.option.setNumber("Mesh.CharacteristicLengthFromParametricPoints", 0)
     gmsh.option.setNumber("Mesh.CharacteristicLengthMin", initlc)
     gmsh.option.setNumber("Mesh.CharacteristicLengthMax", initlc)
@@ -173,7 +177,7 @@ def mesh(domain: _geometry.Domain, filename: str, mesh_size: _geometry.MeshSizeC
     bg_field = gmsh.model.mesh.field.add("PostView")
     gmsh.model.mesh.field.setAsBackgroundMesh(bg_field)
     for i in range(nadapt):
-        _tools.log("Generate refined 2D mesh (pass {}/{})".format(i+1,nadapt))
+        _tools.log("Generate refined 2D mesh (pass {}/{})".format(i+1, nadapt))
         node_tags, node_x, _ = gmsh.model.mesh.getNodes(-1, -1)
         node_x = node_x.reshape([-1, 3])
         nodes_map = dict({tag: i for i, tag in enumerate(node_tags)})
@@ -185,9 +189,9 @@ def mesh(domain: _geometry.Domain, filename: str, mesh_size: _geometry.MeshSizeC
             enode = list(nodes_map[t] for t in enode)
             enode = _tools.np.array(enode).reshape([-1, nn])
             xnode = node_x[enode, :].swapaxes(1, 2).reshape([-1, nn*3])
-            data = _tools.np.column_stack([xnode, node_lc[enode]]).reshape([-1])
+            data = _tools.np.column_stack([xnode, node_lc[enode]])
             gmsh.view.addListData(sf_view, "ST"if etype == 2 else "SQ",
-                                  enode.shape[0], data)
+                                  enode.shape[0], data.reshape([-1]))
         gmsh.model.mesh.field.setNumber(bg_field, "ViewTag", sf_view)
         if intermediate_file_name is not None:
             if intermediate_file_name == "-":
@@ -198,12 +202,13 @@ def mesh(domain: _geometry.Domain, filename: str, mesh_size: _geometry.MeshSizeC
         gmsh.model.mesh.generate(2)
         gmsh.view.remove(sf_view)
     gmsh.model.mesh.field.remove(bg_field)
-    _tools.log("Write \"{}\" (msh version {})".format(filename,version))
+    _tools.log("Write \"{}\" (msh version {})".format(filename, version))
     gmsh.option.setNumber("Mesh.MshFileVersion", version)
     gmsh.write(filename)
 
 
-def convert_to_gis(input_filename: str, projection: _tools.osr.SpatialReference,
+def convert_to_gis(input_filename: str,
+                   projection: _tools.osr.SpatialReference,
                    output_filename: str) -> None:
     """ Converts a triangular gmsh mesh into shapefile or geopackage.
 
@@ -216,7 +221,7 @@ def convert_to_gis(input_filename: str, projection: _tools.osr.SpatialReference,
         output_filename : shape file (.shp) or geopackage (.gpkg) file
     """
     _tools.log("Convert \"{}\" into \"{}\"".format(input_filename,
-        output_filename), True)
+               output_filename), True)
     gmsh.model.add(str(_tools.uuid.uuid4()))
     gmsh.open(input_filename)
     if output_filename.endswith(".shp"):

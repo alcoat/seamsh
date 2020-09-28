@@ -22,7 +22,8 @@ from . import _tools
 
 __all__ = ["Domain", "CurveType", "coarsen_boundaries"]
 
-MeshSizeCallback = _tools.Callable[[_tools.np.ndarray, _tools.osr.SpatialReference],
+MeshSizeCallback = _tools.Callable[[_tools.np.ndarray,
+                                    _tools.osr.SpatialReference],
                                    _tools.np.ndarray]
 
 
@@ -60,7 +61,7 @@ def _generate_unique_points(x):
             cid += 1
     xo = _tools.np.ndarray([cid, 2])
     xo[unique_id, :] = x
-    breakpoints = _tools.np.zeros([xo.shape[0]],dtype=bool)
+    breakpoints = _tools.np.zeros([xo.shape[0]], dtype=bool)
     breakpoints[:nbreakpoints] = True
     return xo, unique_id, breakpoints
 
@@ -101,11 +102,11 @@ class Domain:
         allpoints = _tools.np.row_stack(list(_tools.chain(
             (curve.points for curve in curvesiter),
             (point.x for point in self._interior_points))))
-        self._points, unique_id, breakpoints = _generate_unique_points(
+        self._points, unique_id, breakpts = _generate_unique_points(
             allpoints)
         # assign points id in curves
         cid = 0
-        touched_interior = _tools.np.zeros((self._points.shape[0],),bool)
+        touched_interior = _tools.np.zeros((self._points.shape[0],), bool)
         for curve in _tools.chain(self._curves, self._interior_curves):
             n = curve.points.shape[0]
             curve.pointsid = unique_id[cid:cid+n]
@@ -116,14 +117,14 @@ class Domain:
             point.pointid = unique_id[cid]
             touched_interior[point.pointid] = True
             cid += 1
-        breakpoints = _tools.np.logical_and(touched_interior,breakpoints)
+        breakpts = _tools.np.logical_and(touched_interior, breakpts)
 
         # break curves on repeated points
-        def split_curves(curves, breakpoints, loops=[]):
+        def split_curves(curves, breakpts, loops=[]):
             newcurves = []
             newmap = []
             for curve in curves:
-                breaks = _tools.np.where(breakpoints[curve.pointsid[1:-1]])[0]
+                breaks = _tools.np.where(breakpts[curve.pointsid[1:-1]])[0]
                 if len(breaks) == 0:
                     newcurves.append(curve)
                     newmap.append([len(newcurves)-1])
@@ -137,15 +138,15 @@ class Domain:
                         newcurves.append(ncurve)
                         nc.append(len(newcurves)-1)
                     newmap.append(nc)
-            for iloop, loop in enumerate(loops) :
+            for iloop, loop in enumerate(loops):
                 newloop = []
                 for oi, ori in loop:
-                    if ori : 
-                        for j in newmap[oi] :
-                            newloop.append((j,ori))
-                    else :
-                        for j in reversed(newmap[oi]) :
-                            newloop.append((j,ori))
+                    if ori:
+                        for j in newmap[oi]:
+                            newloop.append((j, ori))
+                    else:
+                        for j in reversed(newmap[oi]):
+                            newloop.append((j, ori))
                 loops[iloop] = newloop
             return newcurves
 
@@ -183,11 +184,11 @@ class Domain:
                     assert(i != -1)
         except AssertionError:
             raise ValueError("Invalid topology")
-        self._curves = split_curves(self._curves, breakpoints, self._curveloops)
-        self._interior_curves = split_curves(self._interior_curves, breakpoints)
+        self._curves = split_curves(self._curves, breakpts, self._curveloops)
+        self._interior_curves = split_curves(self._interior_curves, breakpts)
         loopbboxarea = _tools.np.zeros([len(self._curveloops)])
-        for i, loop in enumerate(self._curveloops):
-            lpts = _tools.np.row_stack([self._curves[j].points for j, o in loop])
+        for i, l in enumerate(self._curveloops):
+            lpts = _tools.np.row_stack([self._curves[j].points for j, o in l])
             bbox = _tools.np.max(lpts, axis=0)-_tools.np.min(lpts, axis=0)
             loopbboxarea[i] = bbox[0]*bbox[1]
         self._curveloops.insert(
@@ -212,10 +213,11 @@ class Domain:
 
     def _add_shapefile(self, filename, physical_name_field,
                        interior, points, curve_type):
-        progress = _tools.ProgressLog("Import features from \"{}\"".format(filename), True)
-        if filename[-5:] == ".gpkg" :
+        progress = _tools.ProgressLog(
+                    "Import features from \"{}\"".format(filename), True)
+        if filename[-5:] == ".gpkg":
             driver = _tools.ogr.GetDriverByName('GPKG')
-        else :
+        else:
             driver = _tools.ogr.GetDriverByName('ESRI Shapefile')
         data = driver.Open(filename, 0)
         layer = data.GetLayer()
@@ -232,7 +234,8 @@ class Domain:
                                  "' not found in shapefile")
         layerproj = layer.GetSpatialRef()
         for i in layer:
-            phys = i.GetField(physfield) if not (physfield is None) else "boundary"
+            phys = (i.GetField(physfield)
+                    if not (physfield is None) else "boundary")
             self._add_geometry(i.geometry(), phys, layerproj, curve_type,
                                interior, points)
             progress.log("{} features imported".format(count))
@@ -248,7 +251,7 @@ class Domain:
             physical_tag: the points physical tag
             projection: the points coordinate system
         """
-        x = _tools.ensure_valid_points(points, projection, self._projection)
+        x = _tools.project_points(points, projection, self._projection)
         points = list(_Point(p, physical_tag) for p in x)
         self._interior_points += points
 
@@ -263,7 +266,7 @@ class Domain:
             projection: the points coordinate system
             curve_type: curve interpolation
         """
-        points = _tools.ensure_valid_points(points, projection, self._projection)
+        points = _tools.project_points(points, projection, self._projection)
         curve = _Curve(points, physical_tag, curve_type)
         self._curves.append(curve)
 
@@ -279,7 +282,7 @@ class Domain:
             projection: the points coordinate system
             curve_type: curve interpolation
         """
-        points = _tools.ensure_valid_points(points, projection, self._projection)
+        points = _tools.project_points(points, projection, self._projection)
         curve = _Curve(points, physical_tag, curve_type)
         self._interior_curves.append(curve)
 
@@ -327,12 +330,11 @@ class Domain:
                             curve_type)
 
 
-
 from .gmsh import _curve_sample
 
 
 def coarsen_boundaries(domain: Domain, x0: _tools.Tuple[float, float],
-                       x0projection: _tools.osr.SpatialReference,
+                       x0_projection: _tools.osr.SpatialReference,
                        mesh_size: MeshSizeCallback) -> Domain:
     """ Creates a new Domain with the same projection and coarsened
     boundaries.
@@ -340,13 +342,13 @@ def coarsen_boundaries(domain: Domain, x0: _tools.Tuple[float, float],
     Args:
         domain: the domain to coarsen
         x0: the coordinates of one point inside the domain.
-        x0projection: the coordinates system of x0.
+        x0_projection: the coordinates system of x0.
         mesh_size: a function returning the desired mesh element size for given
             coordinates
     """
     _tools.log("Coarsen boundaries", True)
-    x0 = _tools.ensure_valid_points(_tools.np.array([x0]), x0projection,
-                              domain._projection)[0]
+    x0 = _tools.project_points(_tools.np.array([x0]), x0_projection,
+                               domain._projection)[0]
     sampled = []
     tags = []
     maxtag = 1
@@ -362,7 +364,8 @@ def coarsen_boundaries(domain: Domain, x0: _tools.Tuple[float, float],
         if curve.tag not in str2tag:
             str2tag[curve.tag] = maxtag
             maxtag += 1
-        tags.append(_tools.np.full(cs.shape[0], str2tag[curve.tag], dtype=_tools.np.int32))
+        tags.append(_tools.np.full(cs.shape[0], str2tag[curve.tag],
+                                   dtype=_tools.np.int32))
         progress.log("{} curves sampled".format(icurve+1))
     progress.end()
     x = _tools.np.vstack(sampled)
@@ -398,16 +401,22 @@ def coarsen_boundaries(domain: Domain, x0: _tools.Tuple[float, float],
     p_l = _tools.c.POINTER(_tools.c.c_int)()
     ms = mesh_size(x, domain._projection)
     _tools.lib.gen_boundaries_from_points(
-        _tools.c.c_int(x.shape[0]), _tools.np2c(x), _tools.np2c(tags, _tools.np.int32),
-        _tools.c.c_int(tri.simplices.shape[0]), _tools.np2c(tri.simplices, _tools.np.int32),
+        _tools.c.c_int(x.shape[0]), _tools.np2c(x),
+        _tools.np2c(tags, _tools.np.int32),
+        _tools.c.c_int(tri.simplices.shape[0]),
+        _tools.np2c(tri.simplices, _tools.np.int32),
         _tools.c.c_int(first), _tools.np2c(ms),
-        _tools.c.byref(p_xo), _tools.c.byref(n_xo), _tools.c.byref(p_l), _tools.c.byref(n_l))
+        _tools.c.byref(p_xo), _tools.c.byref(n_xo),
+        _tools.c.byref(p_l), _tools.c.byref(n_l))
+    #xptr = _tools.c.POINTER(n_xo.value*2*_tools.c.c_double)
+    #xbuf = _tools.c.cast(p_xo, xptr).contents
     xbuf = _tools.c.cast(p_xo, _tools.c.POINTER(n_xo.value*2*_tools.c.c_double)).contents
     xo = _tools.np.ctypeslib.frombuffer(xbuf, dtype=_tools.np.float64)
     xo = xo.reshape([-1, 2]).copy()
     _tools.lib.libcfree(p_xo)
     linesbuf = _tools.c.cast(p_l, _tools.c.POINTER(n_l.value*_tools.c.c_int))
-    lines = _tools.np.ctypeslib.frombuffer(linesbuf.contents, dtype=_tools.np.int32)
+    lines = _tools.np.ctypeslib.frombuffer(linesbuf.contents,
+                                           dtype=_tools.np.int32)
     odomain = Domain(domain._projection)
     breaks = _tools.np.where(lines == -1)[0]
     tagi2str = dict((i, s) for (s, i) in str2tag.items())
@@ -421,4 +430,3 @@ def coarsen_boundaries(domain: Domain, x0: _tools.Tuple[float, float],
                                    curve_type=CurveType.POLYLINE)
     _tools.lib.libcfree(p_l)
     return odomain
-
