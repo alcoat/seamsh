@@ -380,7 +380,11 @@ static int int_vector_append(int **v, int *n, int i) {
   *(int*)vector_append((void**)v,n,sizeof(int)) = i;
 }
 
-static void extract_boundaries(const double *x_p, const int *vtag, int n_tri, const int *tri, const int *tri_color,double **xo, int *nxo, int **l, int *nl)
+static int double_vector_append(double **v, int *n, double i) {
+  *(double*)vector_append((void**)v,n,sizeof(double)) = i;
+}
+
+static void extract_boundaries(const double *x_p, const double *x_size, const int *vtag, int n_tri, const int *tri, const int *tri_color,double **xo, int *nxo, int **l, int *nl)
 {
   // filter triangles
   int n_tri_f = 0;
@@ -406,21 +410,21 @@ static void extract_boundaries(const double *x_p, const int *vtag, int n_tri, co
     for (int j = 0; j<3; ++j) {
       if(neighbours[i*3+j]>=0) continue;
       int firstp = tri_f[i*3+j];
-      int_vector_append(&ll,&nll,firstp);
-      int curp = tri_f[i*3+(j+1)%3];
       int curt = i;
+      int p = j;
       int firstpo = *nxo-1;
       touched[i] = 1;
-      while (curp != firstp) {
+      int curp;
+      do {
+        curp = tri_f[curt*3+(p+1)%3];
         int_vector_append(&ll,&nll,curp);
-        int p = getid3(tri_f+curt*3,curp);
+        p = getid3(tri_f+curt*3,curp);
         while (neighbours[curt*3+p] >=0) {
           curt = neighbours[curt*3+p]; 
           p = getid3(tri_f+curt*3,curp);
         }
         touched[curt] = 1;
-        curp = tri_f[curt*3+(p+1)%3];
-      }
+      } while(curp != firstp || curt !=i);
       int_vector_append(&ll,&nll,-1);
       break;
     }
@@ -429,6 +433,8 @@ static void extract_boundaries(const double *x_p, const int *vtag, int n_tri, co
   *xo = NULL;
   *l = NULL;
   *nxo = 0, *nl = 0;
+  double *osize = NULL;
+  int nosize = 0;
   for (int i = 0; i < nll; ++i) {
     int *lli = ll+i;
     int length = 0;
@@ -450,6 +456,7 @@ static void extract_boundaries(const double *x_p, const int *vtag, int n_tri, co
       int pnext = lli[(start+j+1)%length];
       int stag = get_segment_tag(vtag,p,pnext,ctag);
       coord_vector_append(xo,nxo,x_p+p*2);
+      double_vector_append(&osize,&nosize,x_size[p]);
       int_vector_append(l,nl,(*nxo)-1);
       if (stag != ctag) {
         int_vector_append(l,nl,-1);
@@ -461,7 +468,27 @@ static void extract_boundaries(const double *x_p, const int *vtag, int n_tri, co
     int_vector_append(l,nl,firstp);
     int_vector_append(l,nl,-1);
     i += length;
+    // slightly extrude the boundary towards the domain
+    double *normals = malloc(sizeof(double)*2*length);
+    for (int j = 0; j < length; ++j) {
+      const double *x0 = (*xo) + (firstp+j)*2;
+      const double *x1 = (*xo) + (firstp+(j+length-1)%length)*2;
+      double *n = normals + j*2;
+      n[0] = x1[1] - x0[1];
+      n[1] = -x1[0] + x0[0];
+      double l = hypot(n[0], n[1]);
+      n[0] /= l;
+      n[1] /= l;
+    }
+    for (int j = 0; j < length; ++j) {
+      const double *n0 = &normals[j*2];
+      const double *n1 = &normals[((j+length-1)%length)*2];
+      (*xo)[(firstp+j)*2+0] += osize[firstp+j]*(n0[0]+n1[0])/(50);
+      (*xo)[(firstp+j)*2+1] += osize[firstp+j]*(n0[1]+n1[1])/(50);
+    }
+    free(normals);
   }
+  free(osize);
   free(neighbours);
   free(touched);
   free(tri_f);
@@ -572,7 +599,7 @@ void gen_boundaries_from_points(int n_vertices, double *x, int *tag, int n_tri, 
   int *neigh = build_neighbours(n_tri,tri);
   int *tri_color = color_triangles(x,n_tri,tri,neigh,first,mesh_size);
   optimize_mesh(x, mesh_size, n_vertices, n_tri, tri, tri_color, neigh,tag);
-  extract_boundaries(x, tag, n_tri, tri, tri_color, xo,  nxo, l, nl);
+  extract_boundaries(x, mesh_size, tag, n_tri, tri, tri_color, xo,  nxo, l, nl);
   free(tri_color);
   free(neigh);
 }
