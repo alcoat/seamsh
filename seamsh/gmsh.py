@@ -147,7 +147,6 @@ def mesh(domain: _geometry.Domain, filename: str,
     gmsh.model.setPhysicalName(2, stag, "domain")
     # 1D mesh
     progress = _tools.ProgressLog("Sample curves for mesh size")
-    bounds = gmsh.model.getParametrizationBounds(1, 2)
     for icurve, (dim, tag) in enumerate(gmsh.model.getEntities(1)):
         _, xi, size = _curve_sample_gmsh_tag(tag,
                                              lambda x, p: mesh_size(x, p)/2,
