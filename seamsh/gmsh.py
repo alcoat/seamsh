@@ -204,6 +204,7 @@ def mesh(domain: _geometry.Domain, filename: str,
     _tools.log("Write \"{}\" (msh version {})".format(filename, version))
     gmsh.option.setNumber("Mesh.MshFileVersion", version)
     gmsh.write(filename)
+    gmsh.model.remove()
 
 
 def convert_to_gis(input_filename: str,
