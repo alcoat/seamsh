@@ -202,6 +202,7 @@ def mesh(domain: _geometry.Domain, filename: str,
         gmsh.view.remove(sf_view)
     gmsh.model.mesh.field.remove(bg_field)
     # remove nodes that do not touch any triangle
+    _,keepnodes = gmsh.model.mesh.getElementsByType(2)
     keepnodes = set(keepnodes)
     rm = []
     for e in gmsh.model.getEntities(1) :
