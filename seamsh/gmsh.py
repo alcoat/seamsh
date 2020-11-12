@@ -207,9 +207,9 @@ def mesh(domain: _geometry.Domain, filename: str,
     rm = []
     for e in gmsh.model.getEntities(1) :
         enodes,_,_ = gmsh.model.mesh.getNodes(*e)
-        if not (enodes[0] in keepnodes) :
+        if (len(enodes) == 0) or (not (enodes[0] in keepnodes)) :
             rm.append(e)
-    if rm :
+    if len(rm) != 0 :
         gmsh.model.removeEntities(rm,True)
     _tools.log("Write \"{}\" (msh version {})".format(filename, version))
     gmsh.option.setNumber("Mesh.MshFileVersion", version)
