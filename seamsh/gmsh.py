@@ -201,6 +201,15 @@ def mesh(domain: _geometry.Domain, filename: str,
         gmsh.model.mesh.generate(2)
         gmsh.view.remove(sf_view)
     gmsh.model.mesh.field.remove(bg_field)
+    # remove nodes that do not touch any triangle
+    keepnodes = set(keepnodes)
+    rm = []
+    for e in gmsh.model.getEntities(1) :
+        enodes,_,_ = gmsh.model.mesh.getNodes(*e)
+        if not (enodes[0] in keepnodes) :
+            rm.append(e)
+    if rm :
+        gmsh.model.removeEntities(rm,True)
     _tools.log("Write \"{}\" (msh version {})".format(filename, version))
     gmsh.option.setNumber("Mesh.MshFileVersion", version)
     gmsh.write(filename)
