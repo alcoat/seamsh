@@ -169,7 +169,7 @@ def _mesh_bgrid(domain: _geometry.Domain, mesh_size: _geometry.MeshSizeCallback,
     data = np.c_[xtri.swapaxes(1,2).reshape(-1,9),v.flatten()[tri]]
     view = gmsh.view.add("tri")
     gmsh.view.add_list_data(view, "ST", tri.shape[0], data.flatten())
-    gmsh.fltk.run()
+    #gmsh.fltk.run()
     field = gmsh.model.mesh.field.add("PostView")
     gmsh.model.mesh.field.setNumber(field, "ViewTag",view)
     gmsh.model.mesh.field.setAsBackgroundMesh(field)

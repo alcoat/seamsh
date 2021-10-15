@@ -123,8 +123,6 @@
 #include <fpu_control.h>
 #endif /* LINUX */
 
-namespace robustPredicates
-{
 
 /* On some machines, the exact arithmetic routines might be defeated by the  */
 /*   use of internal extended precision floating-point registers.  Sometimes */
@@ -4845,5 +4843,3 @@ REAL orient4d(REAL* pa, REAL* pb, REAL* pc, REAL* pd, REAL* pe,
   return orient4dadapt(pa, pb, pc, pd, pe,
                        aheight, bheight, cheight, dheight, eheight, permanent);
 }
-
-} // end namespace
