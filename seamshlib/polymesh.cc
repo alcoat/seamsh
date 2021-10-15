@@ -72,13 +72,16 @@ Face *face_new(HalfEdge *e) {
 class PolyMesh {
 public:
 
-  std::vector<Vertex *> vertices;
+  Vertex **vertices;
   HalfEdge **hedges;
   Face **faces;
 
   void reset()
   {
-    for(auto it : vertices) delete it;
+    for (size_t i = 0; i < vector_size(vertices); ++i) {
+      free((void*)vertices[i]);
+    }
+    vector_free(vertices);
     for (size_t i = 0; i < vector_size(hedges); ++i) {
       free((void*)hedges[i]);
     }
@@ -92,6 +95,7 @@ public:
   PolyMesh() {
     faces = NULL;
     hedges = NULL;
+    vertices = NULL;
   }
   ~PolyMesh() { reset(); }
 
@@ -226,13 +230,15 @@ public:
 
   void cleanv()
   {
-    std::vector<Vertex *> uv;
-    for(auto v : vertices) {
+    Vertex **uv = NULL;
+    for(size_t i = 0; i < vector_size(vertices); ++i) {
+      Vertex *v = vertices[i];
       if(v->he)
-        uv.push_back(v);
+        *vector_push(&uv) = v;
       else
-        delete v;
+        free(v);
     }
+    vector_free(vertices);
     vertices = uv;
   }
 
@@ -246,6 +252,7 @@ public:
       else
         free(h);
     }
+    vector_free(hedges);
     hedges = uh;
   }
 
@@ -259,6 +266,7 @@ public:
       else
         free(f);
     }
+    vector_free(faces);
     faces = uf;
   }
 
@@ -275,7 +283,7 @@ public:
     if(he1m == nullptr) return -1;
 
     Vertex *mid = vertex_new(position[0], position[1], data);
-    vertices.push_back(mid);
+    *vector_push(&vertices) = mid;
 
     HalfEdge *he12 = he0m->next;
     HalfEdge *he20 = he0m->next->next;
@@ -346,13 +354,13 @@ public:
   {
     reset();
     Vertex *v_mm = vertex_new(xmin, ymin, -1);
-    vertices.push_back(v_mm);
+    *vector_push(&vertices) = v_mm;
     Vertex *v_mM = vertex_new(xmin, ymax, -1);
-    vertices.push_back(v_mM);
+    *vector_push(&vertices) = v_mM;
     Vertex *v_MM = vertex_new(xmax, ymax, -1);
-    vertices.push_back(v_MM);
+    *vector_push(&vertices) = v_MM;
     Vertex *v_Mm = vertex_new(xmax, ymin, -1);
-    vertices.push_back(v_Mm);
+    *vector_push(&vertices) = v_Mm;
     HalfEdge *mm_MM = half_edge_new(v_mm);
     HalfEdge *MM_Mm = half_edge_new(v_MM);
     HalfEdge *Mm_mm = half_edge_new(v_Mm);
@@ -383,7 +391,7 @@ public:
                             std::vector<HalfEdge *> *_t = NULL)
   {
     Vertex *v = vertex_new(x, y, -1); // one more vertex
-    vertices.push_back(v);
+    *vector_push(&vertices) = v;
 
     HalfEdge *he0 = f->he;
     HalfEdge *he1 = he0->next;
@@ -686,6 +694,6 @@ void polymesh_add_points(PolyMesh *pm, int n, double *x, int *tags)
     size_t I = IND[i];
     f = Walk(f, x[I*2], x[I*2+1]);
     pm->split_triangle(i, x[I*2], x[I*2+1], f, delaunayEdgeCriterionPlaneIsotropic, nullptr);
-    pm->vertices[pm->vertices.size() - 1]->data = tags[I];
+    pm->vertices[vector_size(pm->vertices) - 1]->data = tags[I];
   }
 }
