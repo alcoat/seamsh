@@ -11,24 +11,28 @@
 #include <limits>
 #include "robustPredicates.h"
 
+
 class PolyMesh {
 public:
   class HalfEdge;
   class Face;
-  class Vertex;
-
-  class Vertex {
-  public:
-    Vertex(double x, double y, int _d = -1)
-      : he(NULL), data(_d)
-    {
-      p[0] = x;
-      p[1] = y;
-    }
+  typedef struct {
     double p[2];
-    PolyMesh::HalfEdge *he; // one incident half edge
     int data;
-  };
+    PolyMesh::HalfEdge *he; // one incident half edge
+  } Vertex;
+
+  Vertex *vertex_new(double x, double y, int d)
+  {
+    Vertex *v = (Vertex*)malloc(sizeof(Vertex));
+    v->p[0] = x;
+    v->p[1] = y;
+    v->data = d;
+    v->he = NULL;
+    return v;
+  }
+
+
 
   class HalfEdge {
   public:
@@ -70,34 +74,6 @@ public:
   }
 
   ~PolyMesh() { reset(); }
-
-  void print4debug(const int debugTag)
-  {
-    char name[256];
-    sprintf(name, "polyMesh%d.pos", debugTag);
-    FILE *f = fopen(name, "w");
-    fprintf(f, "View \" %s \"{\n", name);
-    for(auto it : faces) {
-      HalfEdge *he0 = it->he;
-      HalfEdge *he1 = it->he->next;
-      HalfEdge *he2 = it->he->next->next;
-      fprintf(f, "ST(%g,%g,0,%g,%g,0,%g,%g,0){%d,%d,%d};\n",
-              he0->v->p[0], he0->v->p[1], he1->v->p[0],
-              he1->v->p[1], he2->v->p[0], he2->v->p[1],
-              it->data, it->data, it->data);
-    }
-    for(auto it : hedges) {
-      HalfEdge *he = it;
-      if(he->data >= 0) {
-        fprintf(f, "SL(%g,%g,0,%g,%g,0){%d,%d};\n", he->v->p[0],
-                he->v->p[1], he->opposite->v->p[0],
-                he->opposite->v->p[1], he->data, he->data);
-      }
-    }
-
-    fprintf(f, "};\n");
-    fclose(f);
-  }
 
   // compute the degree of a given vertex v
   inline int degree(const Vertex *v) const
@@ -276,7 +252,7 @@ public:
     HalfEdge *he1m = he0m->opposite;
     if(he1m == nullptr) return -1;
 
-    Vertex *mid = new Vertex(position[0], position[1], data);
+    Vertex *mid = vertex_new(position[0], position[1], data);
     vertices.push_back(mid);
 
     HalfEdge *he12 = he0m->next;
@@ -347,13 +323,13 @@ public:
                                    double ymax)
   {
     reset();
-    Vertex *v_mm = new PolyMesh::Vertex(xmin, ymin);
+    Vertex *v_mm = vertex_new(xmin, ymin, -1);
     vertices.push_back(v_mm);
-    Vertex *v_mM = new PolyMesh::Vertex(xmin, ymax);
+    Vertex *v_mM = vertex_new(xmin, ymax, -1);
     vertices.push_back(v_mM);
-    Vertex *v_MM = new PolyMesh::Vertex(xmax, ymax);
+    Vertex *v_MM = vertex_new(xmax, ymax, -1);
     vertices.push_back(v_MM);
-    Vertex *v_Mm = new PolyMesh::Vertex(xmax, ymin);
+    Vertex *v_Mm = vertex_new(xmax, ymin, -1);
     vertices.push_back(v_Mm);
     HalfEdge *mm_MM = new HalfEdge(v_mm);
     HalfEdge *MM_Mm = new HalfEdge(v_MM);
@@ -384,9 +360,7 @@ public:
                             void *data = NULL,
                             std::vector<HalfEdge *> *_t = NULL)
   {
-    Vertex *v = new PolyMesh::Vertex(x, y); // one more vertex
-    v->data = -1;
-
+    Vertex *v = vertex_new(x, y, -1); // one more vertex
     vertices.push_back(v);
 
     HalfEdge *he0 = f->he;
