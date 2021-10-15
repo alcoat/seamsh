@@ -3,7 +3,7 @@
 // See the LICENSE.txt file in the Gmsh root directory for license information.
 // Please report all issues on https://gitlab.onelab.info/gmsh/gmsh/issues.
 
-#include <vector>
+#include "vector.h"
 #include <algorithm>
 #include <stack>
 #include <stdio.h>
@@ -74,15 +74,21 @@ public:
 
   std::vector<Vertex *> vertices;
   std::vector<HalfEdge *> hedges;
-  std::vector<Face *> faces;
+  Face **faces;
 
   void reset()
   {
     for(auto it : vertices) delete it;
     for(auto it : hedges) delete it;
-    for(auto it : faces) delete it;
+    for (size_t i = 0; i < vector_size(faces); ++i) {
+      free((void*)faces[i]);
+    }
+    vector_free(faces);
   }
 
+  PolyMesh() {
+    faces = NULL;
+  }
   ~PolyMesh() { reset(); }
 
   // compute the degree of a given vertex v
@@ -240,10 +246,11 @@ public:
 
   void cleanf()
   {
-    std::vector<Face *> uf;
-    for(auto f : faces) {
+    Face **uf = NULL;
+    for(size_t i = 0; i < vector_size(faces); ++i) {
+      Face *f = faces[i];
       if(f->he)
-        uf.push_back(f);
+        *vector_push(&uf) = f;
       else
         delete f;
     }
@@ -306,8 +313,8 @@ public:
     Face *f1m3 = he1m->f;
     Face *f2m1 = face_new(he2m);
     Face *f3m0 = face_new(he3m);
-    faces.push_back(f2m1);
-    faces.push_back(f3m0);
+    *vector_push(&faces) = f2m1;
+    *vector_push(&faces) = f3m0;
 
     createFace(f0m2, v0, mid, v2, he0m, hem2, he20);
     createFace(f1m3, v1, mid, v3, he1m, hem3, he31);
@@ -348,7 +355,7 @@ public:
     hedges.push_back(MM_Mm);
     hedges.push_back(Mm_mm);
     Face *f0 = face_new(mm_MM);
-    faces.push_back(f0);
+    *vector_push(&faces) = f0;
     createFace(f0, v_mm, v_MM, v_Mm, mm_MM, MM_Mm, Mm_mm);
 
     HalfEdge *MM_mm = half_edge_new(v_MM);
@@ -358,7 +365,7 @@ public:
     hedges.push_back(mm_mM);
     hedges.push_back(mM_MM);
     Face *f1 = face_new(MM_mm);
-    faces.push_back(f1);
+    *vector_push(&faces) = f1;
     createFace(f1, v_MM, v_mm, v_mM, MM_mm, mm_mM, mM_MM);
 
     MM_mm->opposite = mm_MM;
@@ -408,8 +415,8 @@ public:
     Face *f2 = face_new(hev2);
     f1->data = f2->data = f0->data;
 
-    faces.push_back(f1);
-    faces.push_back(f2);
+    *vector_push(&faces) = f1;
+    *vector_push(&faces) = f2;
 
     createFace(f0, v0, v1, v, he0, he1v, hev0);
     createFace(f1, v1, v2, v, he1, he2v, hev1);
@@ -612,11 +619,11 @@ extern "C" {
 }
 
 int polymesh_n_faces(const PolyMesh *pm) {
-  return pm->faces.size();
+  return vector_size(pm->faces);
 }
 
 void polymesh_faces(const PolyMesh *pm, int *faces) {
-  for (size_t i = 0; i < pm->faces.size(); ++i) {
+  for (size_t i = 0; i < vector_size(pm->faces); ++i) {
     HalfEdge *he = pm->faces[i]->he;
     for (int j = 0; j < 3; ++j) {
       faces[i*3+j] = he->v->data;
