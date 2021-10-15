@@ -11,56 +11,66 @@
 #include <limits>
 #include "robustPredicates.h"
 
+typedef struct HalfEdgeStruct HalfEdge;
+typedef struct FaceStruct Face;
+typedef struct {
+  double p[2];
+  int data;
+  HalfEdge *he; // one incident half edge
+} Vertex;
+
+Vertex *vertex_new(double x, double y, int d)
+{
+  Vertex *v = (Vertex*)malloc(sizeof(Vertex));
+  v->p[0] = x;
+  v->p[1] = y;
+  v->data = d;
+  v->he = NULL;
+  return v;
+}
+
+struct HalfEdgeStruct{
+  Vertex *v; // origin
+  Face *f; // incident face
+  HalfEdge *prev; // previous half edge on the face
+  HalfEdge *next; // next half edge on the face
+  HalfEdge *opposite; // opposite half edge (twin)
+  int data;
+};
+
+HalfEdge *half_edge_new(Vertex *v) {
+  HalfEdge *he = (HalfEdge*) malloc(sizeof(HalfEdge));
+  he->v = v;
+  he->f = NULL;
+  he->prev = NULL;
+  he->next = NULL;
+  he->opposite = NULL;
+  he->data = -1;
+  return he;
+}
+
+void half_edge_dir(const HalfEdge *he, double dir[2]) {
+  dir[0] = he->next->v->p[0] - he->v->p[1];
+  dir[1] = he->next->v->p[1] - he->v->p[1];
+  double l = hypot(dir[0], dir[1]);
+  dir[0] /= l;
+  dir[1] /= l;
+}
+
+struct FaceStruct {
+  HalfEdge *he;
+  int data;
+};
+
+Face *face_new(HalfEdge *e) {
+  Face *f = (Face*)malloc(sizeof(Face));
+  f->he = e;
+  f->data = -1;
+  return f;
+}
 
 class PolyMesh {
 public:
-  class HalfEdge;
-  class Face;
-  typedef struct {
-    double p[2];
-    int data;
-    PolyMesh::HalfEdge *he; // one incident half edge
-  } Vertex;
-
-  Vertex *vertex_new(double x, double y, int d)
-  {
-    Vertex *v = (Vertex*)malloc(sizeof(Vertex));
-    v->p[0] = x;
-    v->p[1] = y;
-    v->data = d;
-    v->he = NULL;
-    return v;
-  }
-
-
-
-  class HalfEdge {
-  public:
-    HalfEdge(Vertex *vv)
-      : v(vv), f(NULL), prev(NULL), next(NULL), opposite(NULL), data(-1)
-    {
-    }
-    Vertex *v; // origin
-    Face *f; // incident face
-    HalfEdge *prev; // previous half edge on the face
-    HalfEdge *next; // next half edge on the face
-    HalfEdge *opposite; // opposite half edge (twin)
-    int data;
-    void d(double dir[2]) const {
-      dir[0] = next->v->p[0] - v->p[1];
-      dir[1] = next->v->p[1] - v->p[1];
-      double l = hypot(dir[0], dir[1]);
-      dir[0] /= l;
-      dir[1] /= l;
-    }
-  };
-
-  class Face {
-  public:
-    Face(HalfEdge *e) : he(e), data(-1) {}
-    HalfEdge *he; // one half edge of the face
-    int data;
-  };
 
   std::vector<Vertex *> vertices;
   std::vector<HalfEdge *> hedges;
@@ -177,11 +187,11 @@ public:
 
   inline int merge_faces(HalfEdge *he)
   {
-    PolyMesh::HalfEdge *heo = he->opposite;
+    HalfEdge *heo = he->opposite;
 
     if(heo == nullptr) return -1;
 
-    PolyMesh::Face *to_delete = heo->f;
+    Face *to_delete = heo->f;
 
     do {
       heo->f = he->f;
@@ -268,13 +278,13 @@ public:
     Vertex *v2 = he20->v;
     Vertex *v3 = he31->v;
 
-    HalfEdge *hem0 = new HalfEdge(mid);
-    HalfEdge *hem1 = new HalfEdge(mid);
-    HalfEdge *hem2 = new HalfEdge(mid);
-    HalfEdge *hem3 = new HalfEdge(mid);
+    HalfEdge *hem0 = half_edge_new(mid);
+    HalfEdge *hem1 = half_edge_new(mid);
+    HalfEdge *hem2 = half_edge_new(mid);
+    HalfEdge *hem3 = half_edge_new(mid);
 
-    HalfEdge *he2m = new HalfEdge(v2);
-    HalfEdge *he3m = new HalfEdge(v3);
+    HalfEdge *he2m = half_edge_new(v2);
+    HalfEdge *he3m = half_edge_new(v3);
 
     he0m->opposite = hem0;
     hem0->opposite = he0m;
@@ -294,8 +304,8 @@ public:
 
     Face *f0m2 = he0m->f;
     Face *f1m3 = he1m->f;
-    Face *f2m1 = new Face(he2m);
-    Face *f3m0 = new Face(he3m);
+    Face *f2m1 = face_new(he2m);
+    Face *f3m0 = face_new(he3m);
     faces.push_back(f2m1);
     faces.push_back(f3m0);
 
@@ -331,23 +341,23 @@ public:
     vertices.push_back(v_MM);
     Vertex *v_Mm = vertex_new(xmax, ymin, -1);
     vertices.push_back(v_Mm);
-    HalfEdge *mm_MM = new HalfEdge(v_mm);
-    HalfEdge *MM_Mm = new HalfEdge(v_MM);
-    HalfEdge *Mm_mm = new HalfEdge(v_Mm);
+    HalfEdge *mm_MM = half_edge_new(v_mm);
+    HalfEdge *MM_Mm = half_edge_new(v_MM);
+    HalfEdge *Mm_mm = half_edge_new(v_Mm);
     hedges.push_back(mm_MM);
     hedges.push_back(MM_Mm);
     hedges.push_back(Mm_mm);
-    Face *f0 = new Face(mm_MM);
+    Face *f0 = face_new(mm_MM);
     faces.push_back(f0);
     createFace(f0, v_mm, v_MM, v_Mm, mm_MM, MM_Mm, Mm_mm);
 
-    HalfEdge *MM_mm = new HalfEdge(v_MM);
-    HalfEdge *mm_mM = new HalfEdge(v_mm);
-    HalfEdge *mM_MM = new HalfEdge(v_mM);
+    HalfEdge *MM_mm = half_edge_new(v_MM);
+    HalfEdge *mm_mM = half_edge_new(v_mm);
+    HalfEdge *mM_MM = half_edge_new(v_mM);
     hedges.push_back(MM_mm);
     hedges.push_back(mm_mM);
     hedges.push_back(mM_MM);
-    Face *f1 = new Face(MM_mm);
+    Face *f1 = face_new(MM_mm);
     faces.push_back(f1);
     createFace(f1, v_MM, v_mm, v_mM, MM_mm, mm_mM, mM_MM);
 
@@ -356,7 +366,7 @@ public:
   }
 
   inline int split_triangle(int index, double x, double y, Face *f,
-                            int (*doSwap)(PolyMesh::HalfEdge *, void *) = NULL,
+                            int (*doSwap)(HalfEdge *, void *) = NULL,
                             void *data = NULL,
                             std::vector<HalfEdge *> *_t = NULL)
   {
@@ -370,13 +380,13 @@ public:
     Vertex *v0 = he0->v;
     Vertex *v1 = he1->v;
     Vertex *v2 = he2->v;
-    HalfEdge *hev0 = new PolyMesh::HalfEdge(v);
-    HalfEdge *hev1 = new PolyMesh::HalfEdge(v);
-    HalfEdge *hev2 = new PolyMesh::HalfEdge(v);
+    HalfEdge *hev0 = half_edge_new(v);
+    HalfEdge *hev1 = half_edge_new(v);
+    HalfEdge *hev2 = half_edge_new(v);
 
-    HalfEdge *he0v = new PolyMesh::HalfEdge(v0);
-    HalfEdge *he1v = new PolyMesh::HalfEdge(v1);
-    HalfEdge *he2v = new PolyMesh::HalfEdge(v2);
+    HalfEdge *he0v = half_edge_new(v0);
+    HalfEdge *he1v = half_edge_new(v1);
+    HalfEdge *he2v = half_edge_new(v2);
 
     hedges.push_back(hev0);
     hedges.push_back(hev1);
@@ -394,8 +404,8 @@ public:
 
     Face *f0 = f;
     f->he = hev0;
-    Face *f1 = new Face(hev1);
-    Face *f2 = new Face(hev2);
+    Face *f1 = face_new(hev1);
+    Face *f2 = face_new(hev2);
     f1->data = f2->data = f0->data;
 
     faces.push_back(f1);
@@ -455,12 +465,12 @@ public:
 };
 
 struct HalfEdgePtrLessThan {
-  bool operator()(PolyMesh::HalfEdge *l1, PolyMesh::HalfEdge *l2) const
+  bool operator()(HalfEdge *l1, HalfEdge *l2) const
   {
-    PolyMesh::Vertex *l10 = std::min(l1->v, l1->next->v);
-    PolyMesh::Vertex *l11 = std::max(l1->v, l1->next->v);
-    PolyMesh::Vertex *l20 = std::min(l2->v, l2->next->v);
-    PolyMesh::Vertex *l21 = std::max(l2->v, l2->next->v);
+    Vertex *l10 = std::min(l1->v, l1->next->v);
+    Vertex *l11 = std::max(l1->v, l1->next->v);
+    Vertex *l20 = std::min(l2->v, l2->next->v);
+    Vertex *l21 = std::max(l2->v, l2->next->v);
     if(l10 < l20) return true;
     if(l10 > l20) return false;
     if(l11 > l21) return true;
@@ -469,12 +479,12 @@ struct HalfEdgePtrLessThan {
 };
 
 struct HalfEdgePtrEqual {
-  bool operator()(PolyMesh::HalfEdge *l1, PolyMesh::HalfEdge *l2) const
+  bool operator()(HalfEdge *l1, HalfEdge *l2) const
   {
-    PolyMesh::Vertex *l10 = std::min(l1->v, l1->next->v);
-    PolyMesh::Vertex *l11 = std::max(l1->v, l1->next->v);
-    PolyMesh::Vertex *l20 = std::min(l2->v, l2->next->v);
-    PolyMesh::Vertex *l21 = std::max(l2->v, l2->next->v);
+    Vertex *l10 = std::min(l1->v, l1->next->v);
+    Vertex *l11 = std::max(l1->v, l1->next->v);
+    Vertex *l20 = std::min(l2->v, l2->next->v);
+    Vertex *l21 = std::max(l2->v, l2->next->v);
     if(l10 == l20 && l11 == l21) return true;
     return false;
   }
@@ -534,15 +544,15 @@ size_t HilbertCoordinates(double x, double y, double x0, double y0, double xRed,
   return RESULT;
 }
 
-static PolyMesh::Face *Walk(PolyMesh::Face *f, double x, double y)
+static Face *Walk(Face *f, double x, double y)
 {
   double POS[2] = {x, y};
-  PolyMesh::HalfEdge *he = f->he;
+  HalfEdge *he = f->he;
 
   while(1) {
-    PolyMesh::Vertex *v0 = he->v;
-    PolyMesh::Vertex *v1 = he->next->v;
-    PolyMesh::Vertex *v2 = he->next->next->v;
+    Vertex *v0 = he->v;
+    Vertex *v1 = he->next->v;
+    Vertex *v2 = he->next->next->v;
 
     double s0 = -robustPredicates::orient2d(v0->p, v1->p, POS);
     double s1 = -robustPredicates::orient2d(v1->p, v2->p, POS);
@@ -578,13 +588,13 @@ static PolyMesh::Face *Walk(PolyMesh::Face *f, double x, double y)
   return nullptr;
 }
 
-static int delaunayEdgeCriterionPlaneIsotropic(PolyMesh::HalfEdge *he, void *)
+static int delaunayEdgeCriterionPlaneIsotropic(HalfEdge *he, void *)
 {
   if(he->opposite == nullptr) return -1;
-  PolyMesh::Vertex *v0 = he->v;
-  PolyMesh::Vertex *v1 = he->next->v;
-  PolyMesh::Vertex *v2 = he->next->next->v;
-  PolyMesh::Vertex *v = he->opposite->next->next->v;
+  Vertex *v0 = he->v;
+  Vertex *v1 = he->next->v;
+  Vertex *v2 = he->next->next->v;
+  Vertex *v = he->opposite->next->next->v;
 
   // FIXME : should be oriented anyway !
   double result = -robustPredicates::incircle(v0->p, v1->p,
@@ -607,7 +617,7 @@ int polymesh_n_faces(const PolyMesh *pm) {
 
 void polymesh_faces(const PolyMesh *pm, int *faces) {
   for (size_t i = 0; i < pm->faces.size(); ++i) {
-    PolyMesh::HalfEdge *he = pm->faces[i]->he;
+    HalfEdge *he = pm->faces[i]->he;
     for (int j = 0; j < 3; ++j) {
       faces[i*3+j] = he->v->data;
       he = he->next;
@@ -647,7 +657,7 @@ PolyMesh *polymesh_new(double xmin[2], double xmax[2]) {
 void polymesh_add_points(PolyMesh *pm, int n, double *x, int *tags)
 {
   std::vector<size_t> HC(n), IND(n);
-  PolyMesh::Face *f = pm->faces[0];
+  Face *f = pm->faces[0];
   double  bbmin[2], bbmax[2];
   get_bounding_box(n, x, bbmin, bbmax);
   double bbcenter[2] = {(bbmin[0]+bbmax[0])/2, (bbmin[1]+bbmax[1])/2};
