@@ -19,7 +19,9 @@
 # see <http://www.gnu.org/licenses/>.
 
 cmake_minimum_required(VERSION 3.9)
-project(seamsh C)
+project(seamsh C CXX)
 add_library(seamsh SHARED
   seamsh.c
-)
+  polymesh.cc
+  robustPredicates.cpp
+  )

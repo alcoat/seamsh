@@ -21,7 +21,6 @@
 import gmsh
 from . import geometry as _geometry
 from . import _tools
-
 __all__ = ["mesh", "convert_to_gis"]
 
 gmsh.initialize()
@@ -81,28 +80,8 @@ def _curve_sample(curve, lc, projection):
     gmsh.model.remove()
     return r
 
-
-def mesh(domain: _geometry.Domain, filename: str,
-         mesh_size: _geometry.MeshSizeCallback,
-         version: float = 4.0, intermediate_file_name: str = None) -> None:
-    """ Calls gmsh to generate a mesh from a geometry and a mesh size callback
-
-    Args:
-        domain: the input geometry
-        filename: output mesh file (.msh)
-        mesh_size: callbable prescribing the mesh element size
-        version: msh file version (typically 2.0 or 4.0)
-        intermediate_file_name: if not None, save intermediate meshes to those
-            files for debugging purpose (suffixes and extensions will be
-            appended), if == "-", an interactive gmsh graphical window will pop
-            up after each meshing step.
-    """
-    _tools.log("Generate mesh", True)
-    domain._build_topology()
+def _create_gmsh_geometry(domain: _geometry.Domain) :
     _tools.log("Build gmsh model")
-    nadapt = 3
-    for curve in domain._curves:
-        curve.mesh_size = mesh_size(curve.points, domain._projection)
     gmsh.option.setNumber("Mesh.CharacteristicLengthFromPoints", 0)
     gmsh.option.setNumber("Mesh.LcIntegrationPrecision", 1e-5)
     gmsh.option.setNumber("Mesh.CharacteristicLengthFactor", 1)
@@ -145,6 +124,68 @@ def mesh(domain: _geometry.Domain, filename: str,
         gmsh.model.setPhysicalName(0, tag, name)
     tag = gmsh.model.addPhysicalGroup(2, [stag])
     gmsh.model.setPhysicalName(2, stag, "domain")
+
+
+def _mesh_bgrid(domain: _geometry.Domain, mesh_size: _geometry.MeshSizeCallback, smoothness:float):
+    _tools.log("Build smooth mesh size field")
+    np = _tools.np
+    x0 = np.min(domain._points,axis=0)
+    x1 = np.max(domain._points,axis=0)
+    d = np.max(x1-x0)/100
+    x = np.arange(x0[0],x1[0]+d,d)
+    y = np.arange(x0[1],x1[1]+d,d)
+    xx,yy = np.meshgrid(x,y)
+    xy = np.stack((xx.T,yy.T),axis=2).reshape(-1,2)
+    v = mesh_size(xy,domain._projection)
+    poly = _tools.PolyMesh(x0, x1)
+    poly.add_points(xy)
+    while True:
+        xyz = np.c_[xy.reshape(-1,2),np.zeros((xy.reshape(-1,2).shape[0],1))]
+        tri = poly.get_triangles()
+        edges = np.r_[tri[:,[0,1]],tri[:,[1,2]],tri[:,[2,0]]]
+        edges.sort(axis=1)
+        shift = 2**32
+        ekey = np.unique(edges[:,0]*shift+edges[:,1])
+        edges = np.c_[ekey//shift,ekey%shift]
+        dedges = xy[edges[:,0]]-xy[edges[:,1]]
+        elength = np.hypot(dedges[:,0], dedges[:,1])
+        while True:
+            vo = v.copy()
+            cond = v[edges[:,0]]>v[edges[:,1]]+elength*smoothness
+            v[edges[cond,0]] = v[edges[cond,1]]+elength[cond]*smoothness
+            cond = v[edges[:,1]]>v[edges[:,0]]+elength*smoothness
+            v[edges[cond,1]] = v[edges[cond,0]]+elength[cond]*smoothness
+            if np.max(np.abs(v-vo)) < 1:
+                break
+        eminsize = np.minimum(v[edges[:,0]],v[edges[:,1]])
+        tocut = np.where(eminsize*2<elength)[0]
+        if tocut.size ==0:
+            break
+        newp = (xy[edges[tocut,0]]+xy[edges[tocut,1]])/2
+        xy = np.r_[xy, newp]
+        v = np.r_[v, mesh_size(newp, domain._projection)]
+        poly.add_points(newp)
+    xtri = xyz[tri]
+    data = np.c_[xtri.swapaxes(1,2).reshape(-1,9),v.flatten()[tri]]
+    view = gmsh.view.add("tri")
+    gmsh.view.add_list_data(view, "ST", tri.shape[0], data.flatten())
+    field = gmsh.model.mesh.field.add("PostView")
+    gmsh.model.mesh.field.setNumber(field, "ViewTag",view)
+    gmsh.model.mesh.field.setAsBackgroundMesh(field)
+    gmsh.option.setNumber("Mesh.CharacteristicLengthFromPoints", 0)
+    gmsh.option.setNumber("Mesh.LcIntegrationPrecision", 1e-5)
+    gmsh.option.setNumber("Mesh.CharacteristicLengthFactor", 1)
+    gmsh.option.setNumber("Mesh.CharacteristicLengthFromCurvature", 0)
+    gmsh.option.setNumber("Mesh.CharacteristicLengthExtendFromBoundary", 0)
+    gmsh.option.setNumber("Mesh.CharacteristicLengthFromParametricPoints", 0)
+    _tools.log("Mesh with gmsh")
+    gmsh.model.mesh.generate(2)
+
+
+def _mesh_successive(domain: _geometry.Domain, mesh_size: _geometry.MeshSizeCallback, intermediate_file_name: str=None):
+    for curve in domain._curves:
+        curve.mesh_size = mesh_size(curve.points, domain._projection)
+
     # 1D mesh
     progress = _tools.ProgressLog("Sample curves for mesh size")
     for icurve, (dim, tag) in enumerate(gmsh.model.getEntities(1)):
@@ -175,6 +216,7 @@ def mesh(domain: _geometry.Domain, filename: str,
     gmsh.option.setNumber("Mesh.CharacteristicLengthMax", 1e22)
     bg_field = gmsh.model.mesh.field.add("PostView")
     gmsh.model.mesh.field.setAsBackgroundMesh(bg_field)
+    nadapt = 3
     for i in range(nadapt):
         _tools.log("Generate refined 2D mesh (pass {}/{})".format(i+1, nadapt))
         node_tags, node_x, _ = gmsh.model.mesh.getNodes(-1, -1)
@@ -182,7 +224,7 @@ def mesh(domain: _geometry.Domain, filename: str,
         nodes_map = dict({tag: i for i, tag in enumerate(node_tags)})
         sf_view = gmsh.view.add("mesh size field")
         node_lc = mesh_size(node_x, domain._projection)
-        etypes, etags, enodes = gmsh.model.mesh.getElements(2, stag)
+        etypes, etags, enodes = gmsh.model.mesh.getElements(2, -1)
         for etype, enode in zip(etypes, enodes):
             nn = 3 if etype == 2 else 4
             enode = list(nodes_map[t] for t in enode)
@@ -201,6 +243,33 @@ def mesh(domain: _geometry.Domain, filename: str,
         gmsh.model.mesh.generate(2)
         gmsh.view.remove(sf_view)
     gmsh.model.mesh.field.remove(bg_field)
+
+def mesh(domain: _geometry.Domain, filename: str,
+         mesh_size: _geometry.MeshSizeCallback,
+         version: float = 4.0, intermediate_file_name: str=None, smoothness=-1) -> None:
+    """ Calls gmsh to generate a mesh from a geometry and a mesh size callback
+
+    Args:
+        domain: the input geometry
+        filename: output mesh file (.msh)
+        mesh_size: callbable prescribing the mesh element size
+        version: msh file version (typically 2.0 or 4.0)
+        smoothness: if positive, controls the maximum gradation of the mesh size, 0.25 is
+            a good choice. When used, the mesh size is recursively evaluated on a regular grid
+            which may slow down the meshing process.
+        intermediate_file_name: if not None, save intermediate meshes to those
+            files for debugging purpose (suffixes and extensions will be
+            appended), if == "-", an interactive gmsh graphical window will pop
+            up after each meshing step.
+    """
+    _tools.log("Generate mesh", True)
+    domain._build_topology()
+    _create_gmsh_geometry(domain)
+    if smoothness>0:
+        _mesh_bgrid(domain, mesh_size, smoothness)
+    else:
+        _mesh_successive(domain, mesh_size, intermediate_file_name)
+
     # remove nodes that do not touch any triangle
     _,keepnodes = gmsh.model.mesh.getElementsByType(2)
     keepnodes = set(keepnodes)
