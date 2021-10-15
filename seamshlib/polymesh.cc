@@ -73,13 +73,16 @@ class PolyMesh {
 public:
 
   std::vector<Vertex *> vertices;
-  std::vector<HalfEdge *> hedges;
+  HalfEdge **hedges;
   Face **faces;
 
   void reset()
   {
     for(auto it : vertices) delete it;
-    for(auto it : hedges) delete it;
+    for (size_t i = 0; i < vector_size(hedges); ++i) {
+      free((void*)hedges[i]);
+    }
+    vector_free(hedges);
     for (size_t i = 0; i < vector_size(faces); ++i) {
       free((void*)faces[i]);
     }
@@ -88,6 +91,7 @@ public:
 
   PolyMesh() {
     faces = NULL;
+    hedges = NULL;
   }
   ~PolyMesh() { reset(); }
 
@@ -234,12 +238,13 @@ public:
 
   void cleanh()
   {
-    std::vector<HalfEdge *> uh;
-    for(auto h : hedges) {
+    HalfEdge **uh = NULL;
+    for(size_t i = 0; i < vector_size(hedges); ++i) {
+      HalfEdge *h = hedges[i];
       if(h->f)
-        uh.push_back(h);
+        *vector_push(&uh) = h;
       else
-        delete h;
+        free(h);
     }
     hedges = uh;
   }
@@ -252,7 +257,7 @@ public:
       if(f->he)
         *vector_push(&uf) = f;
       else
-        delete f;
+        free(f);
     }
     faces = uf;
   }
@@ -302,12 +307,12 @@ public:
     he3m->opposite = hem3;
     hem3->opposite = he3m;
 
-    hedges.push_back(hem0);
-    hedges.push_back(hem1);
-    hedges.push_back(hem2);
-    hedges.push_back(hem3);
-    hedges.push_back(he2m);
-    hedges.push_back(he3m);
+    *vector_push(&hedges) = hem0;
+    *vector_push(&hedges) = hem1;
+    *vector_push(&hedges) = hem2;
+    *vector_push(&hedges) = hem3;
+    *vector_push(&hedges) = he2m;
+    *vector_push(&hedges) = he3m;
 
     Face *f0m2 = he0m->f;
     Face *f1m3 = he1m->f;
@@ -351,9 +356,9 @@ public:
     HalfEdge *mm_MM = half_edge_new(v_mm);
     HalfEdge *MM_Mm = half_edge_new(v_MM);
     HalfEdge *Mm_mm = half_edge_new(v_Mm);
-    hedges.push_back(mm_MM);
-    hedges.push_back(MM_Mm);
-    hedges.push_back(Mm_mm);
+    *vector_push(&hedges) = mm_MM;
+    *vector_push(&hedges) = MM_Mm;
+    *vector_push(&hedges) = Mm_mm;
     Face *f0 = face_new(mm_MM);
     *vector_push(&faces) = f0;
     createFace(f0, v_mm, v_MM, v_Mm, mm_MM, MM_Mm, Mm_mm);
@@ -361,9 +366,9 @@ public:
     HalfEdge *MM_mm = half_edge_new(v_MM);
     HalfEdge *mm_mM = half_edge_new(v_mm);
     HalfEdge *mM_MM = half_edge_new(v_mM);
-    hedges.push_back(MM_mm);
-    hedges.push_back(mm_mM);
-    hedges.push_back(mM_MM);
+    *vector_push(&hedges) = MM_mm;
+    *vector_push(&hedges) = mm_mM;
+    *vector_push(&hedges) = mM_MM;
     Face *f1 = face_new(MM_mm);
     *vector_push(&faces) = f1;
     createFace(f1, v_MM, v_mm, v_mM, MM_mm, mm_mM, mM_MM);
@@ -395,12 +400,12 @@ public:
     HalfEdge *he1v = half_edge_new(v1);
     HalfEdge *he2v = half_edge_new(v2);
 
-    hedges.push_back(hev0);
-    hedges.push_back(hev1);
-    hedges.push_back(hev2);
-    hedges.push_back(he0v);
-    hedges.push_back(he1v);
-    hedges.push_back(he2v);
+    *vector_push(&hedges) = hev0;
+    *vector_push(&hedges) = hev1;
+    *vector_push(&hedges) = hev2;
+    *vector_push(&hedges) = he0v;
+    *vector_push(&hedges) = he1v;
+    *vector_push(&hedges) = he2v;
 
     hev0->opposite = he0v;
     he0v->opposite = hev0;
