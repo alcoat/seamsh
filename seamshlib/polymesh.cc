@@ -5,10 +5,9 @@
 
 #include "vector.h"
 #include <algorithm>
-#include <stack>
-#include <stdio.h>
 #include <cmath>
-#include <limits>
+#include <cfloat>
+#include <cstdio>
 #include "robustPredicates.h"
 
 typedef struct HalfEdgeStruct HalfEdge;
@@ -388,7 +387,7 @@ public:
   inline int split_triangle(int index, double x, double y, Face *f,
                             int (*doSwap)(HalfEdge *, void *) = NULL,
                             void *data = NULL,
-                            std::vector<HalfEdge *> *_t = NULL)
+                            HalfEdge ***_t = NULL)
   {
     Vertex *v = vertex_new(x, y, -1); // one more vertex
     *vector_push(&vertices) = v;
@@ -436,15 +435,15 @@ public:
     createFace(f2, v2, v0, v, he2, he0v, hev2);
 
     if(doSwap) {
-      std::stack<HalfEdge *> _stack;
-      _stack.push(he0);
-      _stack.push(he1);
-      _stack.push(he2);
-      std::vector<HalfEdge *> _touched;
-      while(!_stack.empty()) {
-        HalfEdge *he = _stack.top();
-        _touched.push_back(he);
-        _stack.pop();
+      HalfEdge **_stack = NULL;
+      *vector_push(&_stack) = he0;
+      *vector_push(&_stack) = he1;
+      *vector_push(&_stack) = he2;
+      HalfEdge **touched = NULL;
+      while(vector_size(_stack) != 0) {
+        HalfEdge *he = _stack[vector_size(_stack)-1];
+        vector_pop(_stack);
+        *vector_push(&touched) = he;
         //	printf("do we swap %g %g --> %g %g ?\n",
         //		       he->v->position.x(),he->v->position.y(),
         //	he->next->v->position.x(),he->next->v->position.y());
@@ -458,39 +457,49 @@ public:
             if(H[k] == NULL) continue;
             HalfEdge *heb = H[k]->next;
             HalfEdge *hebo = heb->opposite;
-
-            if(std::find(_touched.begin(), _touched.end(), heb) ==
-                 _touched.end() &&
-               std::find(_touched.begin(), _touched.end(), hebo) ==
-                 _touched.end()) {
-              _stack.push(heb);
-            }
-
             HalfEdge *hec = heb->next;
             HalfEdge *heco = hec->opposite;
 
-            if(std::find(_touched.begin(), _touched.end(), hec) ==
-                 _touched.end() &&
-               std::find(_touched.begin(), _touched.end(), heco) ==
-                 _touched.end()) {
-              _stack.push(hec);
+            int found_b_bo = 0;
+            int found_c_co = 0;
+            for (int i = 0; i < vector_size(touched); ++i) {
+              if (touched[i] == heb || touched[i] == hebo)
+                found_b_bo = 1;
+              if (touched[i] == hec || touched[i] == heco)
+                found_c_co = 1;
+            }
+
+            if(found_b_bo == 0) {
+              *vector_push(&_stack) = heb;
+            }
+            if (found_c_co == 0) {
+              *vector_push(&_stack) = hec;
             }
           }
         }
       }
-      if(_t) *_t = _touched;
+      if(_t) *_t = touched;
+      else vector_free(touched);
+      vector_free(_stack);
     }
     return 0;
   }
 };
 
+inline Vertex *ptrmin(Vertex *p1, Vertex *p2) {
+  return p1 < p2 ? p1 : p2;
+}
+
+inline Vertex *ptrmax(Vertex *p1, Vertex *p2) {
+  return p1 > p2 ? p1 : p2;
+}
 struct HalfEdgePtrLessThan {
   bool operator()(HalfEdge *l1, HalfEdge *l2) const
   {
-    Vertex *l10 = std::min(l1->v, l1->next->v);
-    Vertex *l11 = std::max(l1->v, l1->next->v);
-    Vertex *l20 = std::min(l2->v, l2->next->v);
-    Vertex *l21 = std::max(l2->v, l2->next->v);
+    Vertex *l10 = ptrmin(l1->v, l1->next->v);
+    Vertex *l11 = ptrmax(l1->v, l1->next->v);
+    Vertex *l20 = ptrmin(l2->v, l2->next->v);
+    Vertex *l21 = ptrmax(l2->v, l2->next->v);
     if(l10 < l20) return true;
     if(l10 > l20) return false;
     if(l11 > l21) return true;
@@ -501,10 +510,10 @@ struct HalfEdgePtrLessThan {
 struct HalfEdgePtrEqual {
   bool operator()(HalfEdge *l1, HalfEdge *l2) const
   {
-    Vertex *l10 = std::min(l1->v, l1->next->v);
-    Vertex *l11 = std::max(l1->v, l1->next->v);
-    Vertex *l20 = std::min(l2->v, l2->next->v);
-    Vertex *l21 = std::max(l2->v, l2->next->v);
+    Vertex *l10 = ptrmin(l1->v, l1->next->v);
+    Vertex *l11 = ptrmax(l1->v, l1->next->v);
+    Vertex *l20 = ptrmin(l2->v, l2->next->v);
+    Vertex *l21 = ptrmax(l2->v, l2->next->v);
     if(l10 == l20 && l11 == l21) return true;
     return false;
   }
@@ -650,12 +659,12 @@ void plymesh_delete(PolyMesh *pm) {
 }
 
 static void get_bounding_box(int n, double *x, double bbmin[2], double bbmax[2]) {
-  bbmin[0] = bbmin[1] = std::numeric_limits<double>::max();
-  bbmax[0] = bbmax[1] = -std::numeric_limits<double>::max();
+  bbmin[0] = bbmin[1] = DBL_MAX;
+  bbmax[0] = bbmax[1] = -DBL_MAX;
   for (int i = 0; i < n; ++i) {
     for (int j = 0; j < 2; ++j) {
-      bbmin[j] = std::min(x[i*2+j], bbmin[j]);
-      bbmax[j] = std::max(x[i*2+j], bbmax[j]);
+      bbmin[j] = fmin(x[i*2+j], bbmin[j]);
+      bbmax[j] = fmax(x[i*2+j], bbmax[j]);
     }
   }
   for (int j = 0; j < 3; ++j) {
@@ -674,9 +683,17 @@ PolyMesh *polymesh_new(double xmin[2], double xmax[2]) {
 }
 
 
+int size_t_cmp(const void *p0, const void *p1, void *pdata) {
+  size_t *HC = (size_t*)pdata;
+  size_t i0 = *(size_t*)p0;
+  size_t i1 = *(size_t*)p1;
+  return HC[i0] > HC[i1] ? 1 : -1; 
+}
+
 void polymesh_add_points(PolyMesh *pm, int n, double *x, int *tags)
 {
-  std::vector<size_t> HC(n), IND(n);
+  size_t *HC = (size_t*)malloc(sizeof(size_t)*n);
+  size_t *IND = (size_t*)malloc(sizeof(size_t)*n);
   Face *f = pm->faces[0];
   double  bbmin[2], bbmax[2];
   get_bounding_box(n, x, bbmin, bbmax);
@@ -687,13 +704,13 @@ void polymesh_add_points(PolyMesh *pm, int n, double *x, int *tags)
                                bbmax[1] - bbcenter[1]);
     IND[i] = i;
   }
-  std::sort(IND.begin(), IND.end(),
-            [&](size_t i, size_t j) { return HC[i] < HC[j]; });
-
+  quicksort(IND, n, sizeof(size_t), size_t_cmp, HC);
   for(size_t i = 0; i < n; i++) {
     size_t I = IND[i];
     f = Walk(f, x[I*2], x[I*2+1]);
-    pm->split_triangle(i, x[I*2], x[I*2+1], f, delaunayEdgeCriterionPlaneIsotropic, nullptr);
+    pm->split_triangle(i, x[I*2], x[I*2+1], f, delaunayEdgeCriterionPlaneIsotropic, NULL);
     pm->vertices[vector_size(pm->vertices) - 1]->data = tags[I];
   }
+  free(HC);
+  free(IND);
 }

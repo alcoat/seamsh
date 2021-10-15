@@ -23,5 +23,6 @@ project(seamsh C CXX)
 add_library(seamsh SHARED
   seamsh.c
   polymesh.cc
+  sort.c
   robustPredicates.cpp
   )
