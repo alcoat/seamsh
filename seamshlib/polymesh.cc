@@ -11,52 +11,6 @@
 #include <limits>
 #include "robustPredicates.h"
 
-class SVector3 {
-  double _x[3];
-  public:
-  SVector3(double x, double y, double z){
-    _x[0] = x;
-    _x[1] = y;
-    _x[2] = z;
-  }
-  SVector3(const SVector3 &o) {
-    _x[0] = o._x[0];
-    _x[1] = o._x[1];
-    _x[2] = o._x[2];
-  }
-  SVector3 operator-(const SVector3 &o) const {
-    return SVector3(_x[0]-o._x[0],_x[1]-o._x[1],_x[2]-o._x[2]);
-  }
-  SVector3 operator+(const SVector3 &o) const {
-    return SVector3(_x[0]+o._x[0],_x[1]+o._x[1],_x[2]+o._x[2]);
-  }
-  void operator +=(const SVector3 &o) {
-    for (int i=0; i<3; ++i) _x[i] += o._x[i];
-  }
-  SVector3 (double v) {
-    _x[0] = _x[1] = _x[2] = v;
-  }
-  SVector3 operator/(double d) const {
-    return SVector3(x()/d,y()/d,z()/d);
-  }
-  operator double*(){return _x;}
-  void normalize() {
-    double n = sqrt(_x[0]*_x[0]+_x[1]*_x[1]+_x[2]*_x[2]);
-    _x[0] /= n;
-    _x[1] /= n;
-    _x[2] /= n;
-  }
-  double x()const {return _x[0];}
-  double y()const {return _x[1];}
-  double z()const {return _x[2];}
-};
-
-SVector3 crossprod(const SVector3 &a, const SVector3 &b) {
-  return SVector3( a.y()*b.z() - a.z()*b.y(),
-                   a.z()*b.x() - a.x()*b.z(),
-                   a.x()*b.y() - a.y()*b.x());
-}
-
 class PolyMesh {
 public:
   class HalfEdge;
@@ -65,11 +19,13 @@ public:
 
   class Vertex {
   public:
-    Vertex(double x, double y, double z, int _d = -1)
-      : position(x, y, z), he(NULL), data(_d)
+    Vertex(double x, double y, int _d = -1)
+      : he(NULL), data(_d)
     {
+      p[0] = x;
+      p[1] = y;
     }
-    SVector3 position;
+    double p[2];
     PolyMesh::HalfEdge *he; // one incident half edge
     int data;
   };
@@ -86,11 +42,12 @@ public:
     HalfEdge *next; // next half edge on the face
     HalfEdge *opposite; // opposite half edge (twin)
     int data;
-    SVector3 d() const
-    {
-      SVector3 t = next->v->position - v->position;
-      t.normalize();
-      return t;
+    void d(double dir[2]) const {
+      dir[0] = next->v->p[0] - v->p[1];
+      dir[1] = next->v->p[1] - v->p[1];
+      double l = hypot(dir[0], dir[1]);
+      dir[0] /= l;
+      dir[1] /= l;
     }
   };
 
@@ -104,7 +61,6 @@ public:
   std::vector<Vertex *> vertices;
   std::vector<HalfEdge *> hedges;
   std::vector<Face *> faces;
-  std::vector<SVector3> high_order_nodes;
 
   void reset()
   {
@@ -126,16 +82,16 @@ public:
       HalfEdge *he1 = it->he->next;
       HalfEdge *he2 = it->he->next->next;
       fprintf(f, "ST(%g,%g,0,%g,%g,0,%g,%g,0){%d,%d,%d};\n",
-              he0->v->position.x(), he0->v->position.y(), he1->v->position.x(),
-              he1->v->position.y(), he2->v->position.x(), he2->v->position.y(),
+              he0->v->p[0], he0->v->p[1], he1->v->p[0],
+              he1->v->p[1], he2->v->p[0], he2->v->p[1],
               it->data, it->data, it->data);
     }
     for(auto it : hedges) {
       HalfEdge *he = it;
       if(he->data >= 0) {
-        fprintf(f, "SL(%g,%g,0,%g,%g,0){%d,%d};\n", he->v->position.x(),
-                he->v->position.y(), he->opposite->v->position.x(),
-                he->opposite->v->position.y(), he->data, he->data);
+        fprintf(f, "SL(%g,%g,0,%g,%g,0){%d,%d};\n", he->v->p[0],
+                he->v->p[1], he->opposite->v->p[0],
+                he->opposite->v->p[1], he->data, he->data);
       }
     }
 
@@ -166,22 +122,6 @@ public:
       he = he->next;
     } while(he != start);
     return count;
-  }
-
-  // compute the normal of an internal vertex v
-  inline SVector3 normal(const Vertex *v) const
-  {
-    SVector3 n(0, 0, 0);
-    HalfEdge *he = v->he;
-    do {
-      SVector3 n1 = he->d();
-      he = he->opposite;
-      if(he == NULL) return -1;
-      he = he->next;
-      n += crossprod(n1, he->d());
-    } while(he != v->he);
-    n.normalize();
-    return n;
   }
 
   inline HalfEdge *getEdge(Vertex *v0, Vertex *v1)
@@ -331,12 +271,12 @@ public:
     cleanf();
   }
 
-  inline int split_edge(HalfEdge *he0m, const SVector3 &position, int data)
+  inline int split_edge(HalfEdge *he0m, const double position[2], int data)
   {
     HalfEdge *he1m = he0m->opposite;
     if(he1m == nullptr) return -1;
 
-    Vertex *mid = new Vertex(position.x(), position.y(), position.z(), data);
+    Vertex *mid = new Vertex(position[0], position[1], data);
     vertices.push_back(mid);
 
     HalfEdge *he12 = he0m->next;
@@ -407,13 +347,13 @@ public:
                                    double ymax)
   {
     reset();
-    Vertex *v_mm = new PolyMesh::Vertex(xmin, ymin, 0);
+    Vertex *v_mm = new PolyMesh::Vertex(xmin, ymin);
     vertices.push_back(v_mm);
-    Vertex *v_mM = new PolyMesh::Vertex(xmin, ymax, 0);
+    Vertex *v_mM = new PolyMesh::Vertex(xmin, ymax);
     vertices.push_back(v_mM);
-    Vertex *v_MM = new PolyMesh::Vertex(xmax, ymax, 0);
+    Vertex *v_MM = new PolyMesh::Vertex(xmax, ymax);
     vertices.push_back(v_MM);
-    Vertex *v_Mm = new PolyMesh::Vertex(xmax, ymin, 0);
+    Vertex *v_Mm = new PolyMesh::Vertex(xmax, ymin);
     vertices.push_back(v_Mm);
     HalfEdge *mm_MM = new HalfEdge(v_mm);
     HalfEdge *MM_Mm = new HalfEdge(v_MM);
@@ -439,12 +379,12 @@ public:
     mm_MM->opposite = MM_mm;
   }
 
-  inline int split_triangle(int index, double x, double y, double z, Face *f,
+  inline int split_triangle(int index, double x, double y, Face *f,
                             int (*doSwap)(PolyMesh::HalfEdge *, void *) = NULL,
                             void *data = NULL,
                             std::vector<HalfEdge *> *_t = NULL)
   {
-    Vertex *v = new PolyMesh::Vertex(x, y, z); // one more vertex
+    Vertex *v = new PolyMesh::Vertex(x, y); // one more vertex
     v->data = -1;
 
     vertices.push_back(v);
@@ -630,18 +570,11 @@ static PolyMesh::Face *Walk(PolyMesh::Face *f, double x, double y)
     PolyMesh::Vertex *v1 = he->next->v;
     PolyMesh::Vertex *v2 = he->next->next->v;
 
-    double s0 = -robustPredicates::orient2d(v0->position, v1->position, POS);
-    double s1 = -robustPredicates::orient2d(v1->position, v2->position, POS);
-    double s2 = -robustPredicates::orient2d(v2->position, v0->position, POS);
+    double s0 = -robustPredicates::orient2d(v0->p, v1->p, POS);
+    double s1 = -robustPredicates::orient2d(v1->p, v2->p, POS);
+    double s2 = -robustPredicates::orient2d(v2->p, v0->p, POS);
 
     if(s0 >= 0 && s1 >= 0 && s2 >= 0) {
-      /* printf("Face %g %g %g / %g %g %g / %g %g %g \n",
-                v0->position.x(), v0->position.y(), v0->position.z(),
-                v1->position.x(), v1->position.y(), v1->position.z(),
-                v2->position.x(), v2->position.y(), v2->position.z());
-                printf("point %g %g CURRENT FACE %p %g %g %g\n", x,y,he->f,
-                s0,s1,s2); */
-      // getchar();
       return he->f;
     }
     else if(s0 <= 0 && s1 >= 0 && s2 >= 0)
@@ -660,9 +593,9 @@ static PolyMesh::Face *Walk(PolyMesh::Face *f, double x, double y)
       printf("Could not find half-edge in walk for point %g %g on "
                  "face %g %g %g / %g %g %g / %g %g %g "
                  "(orientation tests %g %g %g)", x, y,
-                 v0->position.x(), v0->position.y(), v0->position.z(),
-                 v1->position.x(), v1->position.y(), v1->position.z(),
-                 v2->position.x(), v2->position.y(), v2->position.z(),
+                 v0->p[0], v0->p[1], v0->p[2],
+                 v1->p[0], v1->p[1], v1->p[2],
+                 v2->p[0], v2->p[1], v2->p[2],
                  s0, s1, s2);
     }
     if(he == nullptr) break;
@@ -680,8 +613,8 @@ static int delaunayEdgeCriterionPlaneIsotropic(PolyMesh::HalfEdge *he, void *)
   PolyMesh::Vertex *v = he->opposite->next->next->v;
 
   // FIXME : should be oriented anyway !
-  double result = -robustPredicates::incircle(v0->position, v1->position,
-                                              v2->position, v->position);
+  double result = -robustPredicates::incircle(v0->p, v1->p,
+                                              v2->p, v->p);
 
   return (result > 0) ? 1 : 0;
 }
@@ -712,11 +645,9 @@ void plymesh_delete(PolyMesh *pm) {
   delete pm;
 }
 
-static void get_bounding_box(int n, double *x, SVector3 &bbmin, SVector3 &bbmax) {
-  bbmin = SVector3(std::numeric_limits<double>::max());
-  bbmax = SVector3(-std::numeric_limits<double>::max());
-  bbmin[2] = 0;
-  bbmax[2] = 0;
+static void get_bounding_box(int n, double *x, double bbmin[2], double bbmax[2]) {
+  bbmin[0] = bbmin[1] = std::numeric_limits<double>::max();
+  bbmax[0] = bbmax[1] = -std::numeric_limits<double>::max();
   for (int i = 0; i < n; ++i) {
     for (int j = 0; j < 2; ++j) {
       bbmin[j] = std::min(x[i*2+j], bbmin[j]);
@@ -743,13 +674,13 @@ void polymesh_add_points(PolyMesh *pm, int n, double *x, int *tags)
 {
   std::vector<size_t> HC(n), IND(n);
   PolyMesh::Face *f = pm->faces[0];
-  SVector3 bbmin(0), bbmax(0);
+  double  bbmin[2], bbmax[2];
   get_bounding_box(n, x, bbmin, bbmax);
-  SVector3 bbcenter = (bbmin+bbmax)/2;
+  double bbcenter[2] = {(bbmin[0]+bbmax[0])/2, (bbmin[1]+bbmax[1])/2};
   for(size_t i = 0; i < n; i++) {
-    HC[i] = HilbertCoordinates(x[i*2], x[i*2+1], bbcenter.x(), bbcenter.y(),
-                               bbmax.x() - bbcenter.x(), 0, 0,
-                               bbmax.y() - bbcenter.y());
+    HC[i] = HilbertCoordinates(x[i*2], x[i*2+1], bbcenter[0], bbcenter[1],
+                               bbmax[0] - bbcenter[0], 0, 0,
+                               bbmax[1] - bbcenter[1]);
     IND[i] = i;
   }
   std::sort(IND.begin(), IND.end(),
@@ -758,7 +689,7 @@ void polymesh_add_points(PolyMesh *pm, int n, double *x, int *tags)
   for(size_t i = 0; i < n; i++) {
     size_t I = IND[i];
     f = Walk(f, x[I*2], x[I*2+1]);
-    pm->split_triangle(i, x[I*2], x[I*2+1], 0, f, delaunayEdgeCriterionPlaneIsotropic, nullptr);
+    pm->split_triangle(i, x[I*2], x[I*2+1], f, delaunayEdgeCriterionPlaneIsotropic, nullptr);
     pm->vertices[pm->vertices.size() - 1]->data = tags[I];
   }
 }
