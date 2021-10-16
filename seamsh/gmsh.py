@@ -127,7 +127,7 @@ def _create_gmsh_geometry(domain: _geometry.Domain) :
 
 
 def _mesh_bgrid(domain: _geometry.Domain, mesh_size: _geometry.MeshSizeCallback, smoothness:float):
-    _tools.log("Build smooth mesh size field")
+    _tools.log("Build mesh size field")
     np = _tools.np
     x0 = np.min(domain._points,axis=0)
     x1 = np.max(domain._points,axis=0)
@@ -247,7 +247,7 @@ def _mesh_successive(domain: _geometry.Domain, mesh_size: _geometry.MeshSizeCall
 
 def mesh(domain: _geometry.Domain, filename: str,
          mesh_size: _geometry.MeshSizeCallback,
-         version: float = 4.0, intermediate_file_name: str=None, smoothness=-1) -> None:
+         version: float = 4.0, intermediate_file_name: str=None, smoothness=0.3) -> None:
     """ Calls gmsh to generate a mesh from a geometry and a mesh size callback
 
     Args:
@@ -255,9 +255,8 @@ def mesh(domain: _geometry.Domain, filename: str,
         filename: output mesh file (.msh)
         mesh_size: callbable prescribing the mesh element size
         version: msh file version (typically 2.0 or 4.0)
-        smoothness: if positive, controls the maximum gradation of the mesh size, 0.25 is
-            a good choice. When used, the mesh size is recursively evaluated on a regular grid
-            which may slow down the meshing process.
+        smoothness: Maximum gradation of the mesh size, any positive value
+            is valid but a value in the range [0.1,0.5] is recommended.
         intermediate_file_name: if not None, save intermediate meshes to those
             files for debugging purpose (suffixes and extensions will be
             appended), if == "-", an interactive gmsh graphical window will pop

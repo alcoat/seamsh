@@ -25,6 +25,7 @@
 #define _VECTOR_H_
 #include <string.h>
 #include <stdlib.h>
+#include "qsort.h"
 
 static size_t _vectorSize(void *m) {
   return m == NULL ? 0 : (*((size_t*)m - 1));
@@ -96,13 +97,17 @@ static void _vectorRemoveFlag(void *m, const int *flag, int size) {
 void quicksort (void *const pbase, size_t total_elems, size_t size,
             int (*cmp)(const void*, const void*, void*), void *arg);
 
+#define _vector_less(i, j) (_vv[i] < _vv[j])
+#define _vector_swap(i, j) do{__typeof__(*_vv) tmp = _vv[i]; _vv[i] = _vv[j]; _vv[j] = tmp;}while(0)
+#define vector_sort_r(v,cmp) do{__typeof__(v) _vv = v; QSORT(vector_size(_vv), cmp, _vector_swap);}while(0)
+#define vector_sort(v) vector_sort_r(v,_vector_less)
 #define vector_remove_flag(v,f,repeat) _vectorRemoveFlag((void*)v,f,repeat*sizeof(*v))
 #define vector_size(v) (_vectorSize((void*)v)/sizeof(*v))
 #define vector_push(v) ((__typeof__(*v))_vectorPush((void**)v, sizeof(**v)))
 #define vector_push_n(v, x) ((__typeof__(*v))_vectorPush((void**)v, sizeof(**v) * (x)))
 #define vector_insert(v, p) ((__typeof__(*v))_vectorInsert((void**)v, p * (sizeof(**v)), sizeof(**v)))
 #define vector_pop(v) _vectorPop((void*)v, sizeof(*v))
-#define vector_pop_n(v, x) _vectorPop((void*)v, sizeof(*v) * (x)))
+#define vector_pop_n(v, x) _vectorPop((void*)v, sizeof(*v) * (x))
 #define vector_free(m) _vectorFree((void**)&m)
 #define vector_dup(m) ((__typeof__(m))_vectorDup(m))
 #endif

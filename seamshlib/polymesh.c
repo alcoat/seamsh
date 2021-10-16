@@ -690,7 +690,8 @@ int size_t_cmp(const void *p0, const void *p1, void *pdata) {
 void polymesh_add_points(PolyMesh *pm, int n, double *x, int *tags)
 {
   size_t *HC = (size_t*)malloc(sizeof(size_t)*n);
-  size_t *IND = (size_t*)malloc(sizeof(size_t)*n);
+  size_t *IND = NULL;
+  vector_push_n(&IND, n);
   Face *f = pm->faces[0];
   double  bbmin[2], bbmax[2];
   get_bounding_box(n, x, bbmin, bbmax);
@@ -701,7 +702,8 @@ void polymesh_add_points(PolyMesh *pm, int n, double *x, int *tags)
                                bbmax[1] - bbcenter[1]);
     IND[i] = i;
   }
-  quicksort(IND, n, sizeof(size_t), size_t_cmp, HC);
+  #define cmp(i,j) (HC[IND[i]]<HC[IND[j]])
+  vector_sort_r(IND, cmp);
   for(size_t i = 0; i < n; i++) {
     size_t I = IND[i];
     f = Walk(f, x[I*2], x[I*2+1]);
@@ -709,5 +711,5 @@ void polymesh_add_points(PolyMesh *pm, int n, double *x, int *tags)
     pm->vertices[vector_size(pm->vertices) - 1]->data = tags[I];
   }
   free(HC);
-  free(IND);
+  vector_free(IND);
 }
