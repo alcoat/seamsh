@@ -571,7 +571,7 @@ size_t HilbertCoordinates(double x, double y, double x0, double y0, double xRed,
       RESULT += 3 * BIG;
     }
     else
-      printf("Hilbert failed %d %d", coordRed, coordBlue);
+      printf("Hilbert failed %g %g", coordRed, coordBlue);
     BIG /= 4;
   }
   return RESULT;
@@ -621,7 +621,7 @@ static Face *Walk(Face *f, double x, double y)
   return NULL;
 }
 
-static int delaunayEdgeCriterionPlaneIsotropic(HalfEdge *he, void *)
+static int delaunayEdgeCriterionPlaneIsotropic(HalfEdge *he, void *ignore)
 {
   if(he->opposite == NULL) return -1;
   Vertex *v0 = he->v;
@@ -630,8 +630,7 @@ static int delaunayEdgeCriterionPlaneIsotropic(HalfEdge *he, void *)
   Vertex *v = he->opposite->next->next->v;
 
   // FIXME : should be oriented anyway !
-  double result = -incircle(v0->p, v1->p,
-                                              v2->p, v->p);
+  double result = -incircle(v0->p, v1->p, v2->p, v->p);
 
   return (result > 0) ? 1 : 0;
 }
