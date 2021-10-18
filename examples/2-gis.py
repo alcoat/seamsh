@@ -10,7 +10,7 @@ import os
 import urllib.request
 import tarfile
 if not os.path.isdir("data2"):
-    url = "ftp://braque.mema.ucl.ac.be/seamsh/data-test-2.tar.gz"
+    url = "https://nextcloud.cism.ucl.ac.be/s/L62bAwF9kma3Ta3/download/data-test-2.tar.gz"
     urllib.request.urlretrieve(url, "data-test-2.tar.gz")
     f = tarfile.open("data-test-2.tar.gz", "r:*")
     f.extractall()
