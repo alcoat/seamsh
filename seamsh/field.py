@@ -50,7 +50,7 @@ class Distance:
 
         for icurve, curve in enumerate(all_curves_iter):
             if (tags is None) or (curve.tag in tags):
-                points.append(_curve_sample(curve, size, None))
+                points.append(_curve_sample(curve, size, domain._projection))
                 progress.log("{} features sampled".format(icurve+1))
         for point in _tools.chain(domain._interior_points):
             if (tags is None) or (point.tag in tags):

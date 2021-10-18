@@ -68,11 +68,12 @@ def _generate_unique_points(x):
 
 class _Curve:
 
-    def __init__(self, points, tag, curve_type):
-        self.points = points[:, :2]
+    def __init__(self, points, tag, curve_type, projection):
+        self.points = _tools.np.array(points)[:, :2]
         self.mesh_size = None
         self.tag = tag
         self.curve_type = curve_type
+        self.projection = projection
 
 
 class _Point:
@@ -133,7 +134,7 @@ class Domain:
                     nc = []
                     for i, j in zip(breaks[:-1], breaks[1:]):
                         ncurve = _Curve(
-                            curve.points[i:j+1], curve.tag, curve.curve_type)
+                            curve.points[i:j+1], curve.tag, curve.curve_type, curve.projection)
                         ncurve.pointsid = curve.pointsid[i:j+1]
                         newcurves.append(ncurve)
                         nc.append(len(newcurves)-1)
@@ -266,8 +267,7 @@ class Domain:
             projection: the points coordinate system
             curve_type: curve interpolation
         """
-        points = _tools.project_points(points, projection, self._projection)
-        curve = _Curve(points, physical_tag, curve_type)
+        curve = _Curve(points, physical_tag, curve_type, projection)
         self._curves.append(curve)
 
     def add_interior_curve(self, points: _tools.np.ndarray, physical_tag: str,
@@ -282,8 +282,7 @@ class Domain:
             projection: the points coordinate system
             curve_type: curve interpolation
         """
-        points = _tools.project_points(points, projection, self._projection)
-        curve = _Curve(points, physical_tag, curve_type)
+        curve = _Curve(points, physical_tag, curve_type, projection)
         self._interior_curves.append(curve)
 
     def add_interior_points_shp(self, filename: str,

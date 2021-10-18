@@ -65,20 +65,37 @@ def _curve_sample_gmsh_tag(tag, lc, projection):
         size = _tools.np.hstack([size, esize])[s]
     return x[:, :2], xi, size
 
+class _lcproj():
+    def __init__(self, lc, proj):
+        self.lc = lc
+        self.projection = proj
+    def __call__(self, x, projection):
+        xlc = _tools.project_points(x, self.projection, projection)
+        x2 = _tools.np.copy(x)
+        eps = 1e-8
+        x2[:,0] += eps
+        x2[:,1] += eps
+        xlc = _tools.project_points(x, self.projection, projection)
+        xlc2 = _tools.project_points(x2, self.projection, projection)
+        slc = self.lc(xlc, projection)
+        h = _tools.np.hypot(xlc2[:,0]-xlc[:,0], xlc2[:,1]-xlc[:,1])/_tools.np.hypot(eps,eps)
+        return slc/h
 
 def _curve_sample(curve, lc, projection):
     gmsh.model.add(str(_tools.uuid.uuid4()))
-    tags = list([gmsh.model.geo.addPoint(*x, 0) -
-                 1 for x in curve.points[:-1, :]])
+    #points = _tools.project_points(curve.points, curve.projection, projection)
+    tags = list([gmsh.model.geo.addPoint(*x, 0) - 1
+                 for x in curve.points[:-1, :]])
     if _tools.np.linalg.norm(curve.points[0, :]-curve.points[-1, :]) < 1e-8:
         tags.append(tags[0])
     else:
         tags.append(gmsh.model.geo.addPoint(*curve.points[-1, :], 0)-1)
     ltag = _gmsh_curve_geo(curve.curve_type, tags)
     gmsh.model.geo.synchronize()
-    r = _curve_sample_gmsh_tag(ltag[0], lc, projection)[0]
+    plc = _lcproj(lc, curve.projection)
+    r = _curve_sample_gmsh_tag(ltag[0], plc, projection)[0]
     gmsh.model.remove()
-    return r
+    return _tools.project_points(r, curve.projection, projection)
 
 
 def _create_gmsh_geometry(domain: _geometry.Domain):
