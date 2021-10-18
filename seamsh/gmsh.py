@@ -80,7 +80,8 @@ def _curve_sample(curve, lc, projection):
     gmsh.model.remove()
     return r
 
-def _create_gmsh_geometry(domain: _geometry.Domain) :
+
+def _create_gmsh_geometry(domain: _geometry.Domain):
     _tools.log("Build gmsh model")
     gmsh.option.setNumber("Mesh.CharacteristicLengthFromPoints", 0)
     gmsh.option.setNumber("Mesh.LcIntegrationPrecision", 1e-5)
@@ -126,52 +127,53 @@ def _create_gmsh_geometry(domain: _geometry.Domain) :
     gmsh.model.setPhysicalName(2, stag, "domain")
 
 
-def _mesh_bgrid(domain: _geometry.Domain, mesh_size: _geometry.MeshSizeCallback, smoothness:float):
+def _mesh_bgrid(domain: _geometry.Domain,
+                mesh_size: _geometry.MeshSizeCallback,
+                smoothness: float):
     _tools.log("Build mesh size field")
     np = _tools.np
-    x0 = np.min(domain._points,axis=0)
-    x1 = np.max(domain._points,axis=0)
+    x0 = np.min(domain._points, axis=0)
+    x1 = np.max(domain._points, axis=0)
     d = np.max(x1-x0)/100
-    x = np.arange(x0[0],x1[0]+d,d)
-    y = np.arange(x0[1],x1[1]+d,d)
-    xx,yy = np.meshgrid(x,y)
-    xy = np.stack((xx.T,yy.T),axis=2).reshape(-1,2)
-    v = mesh_size(xy,domain._projection)
+    x = np.arange(x0[0], x1[0]+d, d)
+    y = np.arange(x0[1], x1[1]+d, d)
+    xx, yy = np.meshgrid(x, y)
+    xy = np.stack((xx.T, yy.T), axis=2).reshape(-1, 2)
+    v = mesh_size(xy, domain._projection)
     poly = _tools.PolyMesh(x0, x1)
     poly.add_points(xy)
     while True:
-        xyz = np.c_[xy.reshape(-1,2),np.zeros((xy.reshape(-1,2).shape[0],1))]
+        xyz = np.c_[xy.reshape(-1, 2), np.zeros((xy.size//2, 1))]
         tri = poly.get_triangles()
-        edges = np.r_[tri[:,[0,1]],tri[:,[1,2]],tri[:,[2,0]]]
+        edges = np.r_[tri[:, [0, 1]], tri[:, [1, 2]], tri[:, [2, 0]]]
         edges.sort(axis=1)
         shift = 2**32
-        ekey = np.unique(edges[:,0]*shift+edges[:,1])
-        edges = np.c_[ekey//shift,ekey%shift]
-        dedges = xy[edges[:,0]]-xy[edges[:,1]]
-        elength = np.hypot(dedges[:,0], dedges[:,1])
+        ekey = np.unique(edges[:, 0]*shift+edges[:, 1])
+        edges = np.c_[ekey//shift, ekey % shift]
+        dedges = xy[edges[:, 0]]-xy[edges[:, 1]]
+        elength = np.hypot(dedges[:, 0], dedges[:, 1])
         while True:
             vo = v.copy()
-            cond = v[edges[:,0]]>v[edges[:,1]]+elength*smoothness
-            v[edges[cond,0]] = v[edges[cond,1]]+elength[cond]*smoothness
-            cond = v[edges[:,1]]>v[edges[:,0]]+elength*smoothness
-            v[edges[cond,1]] = v[edges[cond,0]]+elength[cond]*smoothness
+            cond = v[edges[:, 0]] > v[edges[:, 1]]+elength*smoothness
+            v[edges[cond, 0]] = v[edges[cond, 1]]+elength[cond]*smoothness
+            cond = v[edges[:, 1]] > v[edges[:, 0]]+elength*smoothness
+            v[edges[cond, 1]] = v[edges[cond, 0]]+elength[cond]*smoothness
             if np.max(np.abs(v-vo)) < 1:
                 break
-        eminsize = np.minimum(v[edges[:,0]],v[edges[:,1]])
-        tocut = np.where(eminsize*2<elength)[0]
-        if tocut.size ==0:
+        eminsize = np.minimum(v[edges[:, 0]], v[edges[:, 1]])
+        tocut = np.where(eminsize*2 < elength)[0]
+        if tocut.size == 0:
             break
-        newp = (xy[edges[tocut,0]]+xy[edges[tocut,1]])/2
+        newp = (xy[edges[tocut, 0]]+xy[edges[tocut, 1]])/2
         xy = np.r_[xy, newp]
         v = np.r_[v, mesh_size(newp, domain._projection)]
         poly.add_points(newp)
     xtri = xyz[tri]
-    data = np.c_[xtri.swapaxes(1,2).reshape(-1,9),v.flatten()[tri]]
+    data = np.c_[xtri.swapaxes(1, 2).reshape(-1, 9), v.flatten()[tri]]
     view = gmsh.view.add("tri")
     gmsh.view.add_list_data(view, "ST", tri.shape[0], data.flatten())
-    #gmsh.fltk.run()
     field = gmsh.model.mesh.field.add("PostView")
-    gmsh.model.mesh.field.setNumber(field, "ViewTag",view)
+    gmsh.model.mesh.field.setNumber(field, "ViewTag", view)
     gmsh.model.mesh.field.setAsBackgroundMesh(field)
     gmsh.option.setNumber("Mesh.CharacteristicLengthFromPoints", 0)
     gmsh.option.setNumber("Mesh.LcIntegrationPrecision", 1e-5)
@@ -183,7 +185,9 @@ def _mesh_bgrid(domain: _geometry.Domain, mesh_size: _geometry.MeshSizeCallback,
     gmsh.model.mesh.generate(2)
 
 
-def _mesh_successive(domain: _geometry.Domain, mesh_size: _geometry.MeshSizeCallback, intermediate_file_name: str=None):
+def _mesh_successive(domain: _geometry.Domain,
+                     mesh_size: _geometry.MeshSizeCallback,
+                     intermediate_file_name: str = None):
     for curve in domain._curves:
         curve.mesh_size = mesh_size(curve.points, domain._projection)
 
@@ -245,9 +249,12 @@ def _mesh_successive(domain: _geometry.Domain, mesh_size: _geometry.MeshSizeCall
         gmsh.view.remove(sf_view)
     gmsh.model.mesh.field.remove(bg_field)
 
+
 def mesh(domain: _geometry.Domain, filename: str,
          mesh_size: _geometry.MeshSizeCallback,
-         version: float = 4.0, intermediate_file_name: str=None, smoothness=0.3) -> None:
+         version: float = 4.0,
+         intermediate_file_name: str = None,
+         smoothness=0.3) -> None:
     """ Calls gmsh to generate a mesh from a geometry and a mesh size callback
 
     Args:
@@ -265,21 +272,21 @@ def mesh(domain: _geometry.Domain, filename: str,
     _tools.log("Generate mesh", True)
     domain._build_topology()
     _create_gmsh_geometry(domain)
-    if smoothness>0:
+    if smoothness > 0:
         _mesh_bgrid(domain, mesh_size, smoothness)
     else:
         _mesh_successive(domain, mesh_size, intermediate_file_name)
 
     # remove nodes that do not touch any triangle
-    _,keepnodes = gmsh.model.mesh.getElementsByType(2)
+    _, keepnodes = gmsh.model.mesh.getElementsByType(2)
     keepnodes = set(keepnodes)
     rm = []
-    for e in gmsh.model.getEntities(1) :
-        enodes,_,_ = gmsh.model.mesh.getNodes(*e)
-        if (len(enodes) == 0) or (not (enodes[0] in keepnodes)) :
+    for e in gmsh.model.getEntities(1):
+        enodes, _, _ = gmsh.model.mesh.getNodes(*e)
+        if (len(enodes) == 0) or (not (enodes[0] in keepnodes)):
             rm.append(e)
-    if len(rm) != 0 :
-        gmsh.model.removeEntities(rm,True)
+    if len(rm) != 0:
+        gmsh.model.removeEntities(rm, True)
     _tools.log("Write \"{}\" (msh version {})".format(filename, version))
     gmsh.option.setNumber("Mesh.MshFileVersion", version)
     gmsh.write(filename)
