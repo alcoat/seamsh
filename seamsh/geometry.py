@@ -101,7 +101,9 @@ class Domain:
         _tools.log("Build topology")
         curvesiter = _tools.chain(self._curves, self._interior_curves)
         allpoints = _tools.np.row_stack(list(_tools.chain(
-            (curve.points for curve in curvesiter),
+            (_tools.project_points(curve.points, curve.projection,
+                                   self._projection)
+             for curve in curvesiter),
             (point.x for point in self._interior_points))))
         self._points, unique_id, breakpts = _generate_unique_points(
             allpoints)
