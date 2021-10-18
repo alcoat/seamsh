@@ -19,7 +19,7 @@
 # see <http://www.gnu.org/licenses/>.
 
 seamshbuild-linux :
-  image : immc/seamsh-build:v0.9
+  image : immc/seamsh-build:v0.10
   stage : build
   script:
     - cd seamshlib
