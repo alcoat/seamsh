@@ -110,5 +110,4 @@ class PolyMesh:
         n = lib.polymesh_n_faces(self._ptr)
         tri = np.empty((n,3),np.int32)
         lib.polymesh_faces(self._ptr, np2c(tri, np.int32))
-        keep = np.logical_and(tri[:,0]!=-1, np.logical_and(tri[:,1]!=-1, tri[:,2]!=-1))
-        return tri[keep]
+        return tri

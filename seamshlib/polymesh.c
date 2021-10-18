@@ -8,14 +8,37 @@
 #include <float.h>
 #include <stdio.h>
 #include "robustPredicates.h"
+#include "polymesh.h"
 
-typedef struct HalfEdgeStruct HalfEdge;
-typedef struct FaceStruct Face;
-typedef struct {
+typedef struct HalfEdge HalfEdge;
+typedef struct Face Face;
+typedef struct Vertex Vertex;
+
+struct Vertex{
   double p[2];
   int data;
   HalfEdge *he; // one incident half edge
-} Vertex;
+};
+
+struct HalfEdge{
+  Vertex *v; // origin
+  Face *f; // incident face
+  HalfEdge *prev; // previous half edge on the face
+  HalfEdge *next; // next half edge on the face
+  HalfEdge *opposite; // opposite half edge (twin)
+  int data;
+};
+
+struct Face {
+  HalfEdge *he;
+  int data;
+};
+
+struct PolyMesh {
+  Vertex **vertices;
+  HalfEdge **hedges;
+  Face **faces;
+};
 
 Vertex *vertex_new(double x, double y, int d)
 {
@@ -27,14 +50,6 @@ Vertex *vertex_new(double x, double y, int d)
   return v;
 }
 
-struct HalfEdgeStruct{
-  Vertex *v; // origin
-  Face *f; // incident face
-  HalfEdge *prev; // previous half edge on the face
-  HalfEdge *next; // next half edge on the face
-  HalfEdge *opposite; // opposite half edge (twin)
-  int data;
-};
 
 HalfEdge *half_edge_new(Vertex *v) {
   HalfEdge *he = (HalfEdge*) malloc(sizeof(HalfEdge));
@@ -55,11 +70,6 @@ void half_edge_dir(const HalfEdge *he, double dir[2]) {
   dir[1] /= l;
 }
 
-struct FaceStruct {
-  HalfEdge *he;
-  int data;
-};
-
 Face *face_new(HalfEdge *e) {
   Face *f = (Face*)malloc(sizeof(Face));
   f->he = e;
@@ -67,11 +77,6 @@ Face *face_new(HalfEdge *e) {
   return f;
 }
 
-typedef struct {
-  Vertex **vertices;
-  HalfEdge **hedges;
-  Face **faces;
-} PolyMesh;
 
 PolyMesh *_poly_mesh_new() {
   PolyMesh *pm = (PolyMesh*)malloc(sizeof(PolyMesh));
@@ -636,20 +641,40 @@ static int delaunayEdgeCriterionPlaneIsotropic(HalfEdge *he, void *ignore)
 }
 
 int polymesh_n_faces(const PolyMesh *pm) {
-  return vector_size(pm->faces);
+  int n = 0;
+  for (int i = 0; i < vector_size(pm->faces); ++i) {
+    int skip = 0;
+    HalfEdge *he = pm->faces[i]->he;
+    int tri[3];
+    for (int j = 0; j < 3; ++j) {
+      tri[j] = he->v->data;
+      he = he->next;
+    }
+    n += (tri[0] >= 0 && tri[1] >= 0 && tri[2] >= 0);
+  }
+  return n;
 }
 
 void polymesh_faces(const PolyMesh *pm, int *faces) {
-  for (size_t i = 0; i < vector_size(pm->faces); ++i) {
+  int n = 0;
+  for (int i = 0; i < vector_size(pm->faces); ++i) {
+    int skip = 0;
     HalfEdge *he = pm->faces[i]->he;
+    int tri[3];
     for (int j = 0; j < 3; ++j) {
-      faces[i*3+j] = he->v->data;
+      tri[j] = he->v->data;
       he = he->next;
+    }
+    if (tri[0] >= 0 && tri[1] >= 0 && tri[2] >= 0) {
+      faces[n*3+0] = tri[0];
+      faces[n*3+1] = tri[1];
+      faces[n*3+2] = tri[2];
+      n++;
     }
   }
 }
 
-void plymesh_delete(PolyMesh *pm) {
+void polymesh_delete(PolyMesh *pm) {
   poly_mesh_reset(pm);
   free(pm);
 }
@@ -663,7 +688,7 @@ static void get_bounding_box(int n, double *x, double bbmin[2], double bbmax[2])
       bbmax[j] = fmax(x[i*2+j], bbmax[j]);
     }
   }
-  for (int j = 0; j < 3; ++j) {
+  for (int j = 0; j < 2; ++j) {
     double L = bbmax[j]-bbmin[j];
     bbmin[j] -= L*0.1;
     bbmax[j] += L*0.1;
@@ -679,20 +704,13 @@ PolyMesh *polymesh_new(double xmin[2], double xmax[2]) {
 }
 
 
-int size_t_cmp(const void *p0, const void *p1, void *pdata) {
-  size_t *HC = (size_t*)pdata;
-  size_t i0 = *(size_t*)p0;
-  size_t i1 = *(size_t*)p1;
-  return HC[i0] > HC[i1] ? 1 : -1; 
-}
-
 void polymesh_add_points(PolyMesh *pm, int n, double *x, int *tags)
 {
   size_t *HC = (size_t*)malloc(sizeof(size_t)*n);
   size_t *IND = NULL;
   vector_push_n(&IND, n);
   Face *f = pm->faces[0];
-  double  bbmin[2], bbmax[2];
+  double bbmin[2], bbmax[2];
   get_bounding_box(n, x, bbmin, bbmax);
   double bbcenter[2] = {(bbmin[0]+bbmax[0])/2, (bbmin[1]+bbmax[1])/2};
   for(size_t i = 0; i < n; i++) {
