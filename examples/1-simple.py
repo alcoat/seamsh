@@ -40,7 +40,7 @@ domain.add_boundary_curve(x, "wall1", domain_srs, CurveType.POLYLINE)
 # A SPLINE uses a cubic spline interpolation through the control points
 
 x = [[0, 0], [0.25, -0.2], [0.75, -0.2], [1, 0]]
-domain.add_boundary_curve(x, "wall2", domain_srs, CurveType.SPLINE)
+domain.add_boundary_curve(x, "wall2", domain_srs, CurveType.BSPLINE)
 
 # %%
 # A BSPLINE is smoother than a SPLINE but the control points are not on the

@@ -65,25 +65,29 @@ def _curve_sample_gmsh_tag(tag, lc, projection):
         size = _tools.np.hstack([size, esize])[s]
     return x[:, :2], xi, size
 
+
 class _lcproj():
+
     def __init__(self, lc, proj):
         self.lc = lc
         self.projection = proj
+
     def __call__(self, x, projection):
         xlc = _tools.project_points(x, self.projection, projection)
         x2 = _tools.np.copy(x)
         eps = 1e-8
-        x2[:,0] += eps
-        x2[:,1] += eps
+        x2[:, 0] += eps
+        x2[:, 1] += eps
         xlc = _tools.project_points(x, self.projection, projection)
         xlc2 = _tools.project_points(x2, self.projection, projection)
         slc = self.lc(xlc, projection)
-        h = _tools.np.hypot(xlc2[:,0]-xlc[:,0], xlc2[:,1]-xlc[:,1])/_tools.np.hypot(eps,eps)
+        enorm = _tools.np.hypot(eps, eps)
+        h = _tools.np.hypot(xlc2[:, 0]-xlc[:, 0], xlc2[:, 1]-xlc[:, 1])/enorm
         return slc/h
+
 
 def _curve_sample(curve, lc, projection):
     gmsh.model.add(str(_tools.uuid.uuid4()))
-    #points = _tools.project_points(curve.points, curve.projection, projection)
     tags = list([gmsh.model.geo.addPoint(*x, 0) - 1
                  for x in curve.points[:-1, :]])
     if _tools.np.linalg.norm(curve.points[0, :]-curve.points[-1, :]) < 1e-8:

@@ -92,6 +92,7 @@ def np2c(a, dtype=np.float64):
     r.tmp = tmp
     return r
 
+
 class PolyMesh:
     def __init__(self, bbmin, bbmax):
         lib.polymesh_new.restype = c.c_void_p
@@ -101,13 +102,14 @@ class PolyMesh:
     def add_points(self, v):
         tags = np.arange(self._n, self._n+v.shape[0], dtype=np.int32)
         self._n += v.shape[0]
-        lib.polymesh_add_points(self._ptr,
-            c.c_int(v.shape[0]),
-            np2c(v), np2c(tags,np.int32))
+        lib.polymesh_add_points(
+                self._ptr,
+                c.c_int(v.shape[0]),
+                np2c(v), np2c(tags, np.int32))
 
     def get_triangles(self):
         lib.polymesh_n_faces.restype = c.c_int
         n = lib.polymesh_n_faces(self._ptr)
-        tri = np.empty((n,3),np.int32)
+        tri = np.empty((n, 3), np.int32)
         lib.polymesh_faces(self._ptr, np2c(tri, np.int32))
         return tri

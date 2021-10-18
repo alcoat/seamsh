@@ -136,7 +136,8 @@ class Domain:
                     nc = []
                     for i, j in zip(breaks[:-1], breaks[1:]):
                         ncurve = _Curve(
-                            curve.points[i:j+1], curve.tag, curve.curve_type, curve.projection)
+                            curve.points[i:j+1], curve.tag, curve.curve_type,
+                            curve.projection)
                         ncurve.pointsid = curve.pointsid[i:j+1]
                         newcurves.append(ncurve)
                         nc.append(len(newcurves)-1)
@@ -330,9 +331,7 @@ class Domain:
         self._add_shapefile(filename, physical_name_field, False, False,
                             curve_type)
 
-
 from .gmsh import _curve_sample
-
 
 def coarsen_boundaries(domain: Domain, x0: _tools.Tuple[float, float],
                        x0_projection: _tools.osr.SpatialReference,
@@ -409,9 +408,10 @@ def coarsen_boundaries(domain: Domain, x0: _tools.Tuple[float, float],
         _tools.c.c_int(first), _tools.np2c(ms),
         _tools.c.byref(p_xo), _tools.c.byref(n_xo),
         _tools.c.byref(p_l), _tools.c.byref(n_l))
-    #xptr = _tools.c.POINTER(n_xo.value*2*_tools.c.c_double)
-    #xbuf = _tools.c.cast(p_xo, xptr).contents
-    xbuf = _tools.c.cast(p_xo, _tools.c.POINTER(n_xo.value*2*_tools.c.c_double)).contents
+    # xptr = _tools.c.POINTER(n_xo.value*2*_tools.c.c_double)
+    # xbuf = _tools.c.cast(p_xo, xptr).contents
+    xtype = _tools.c.POINTER(n_xo.value*2*_tools.c.c_double)
+    xbuf = _tools.c.cast(p_xo, xtype).contents
     xo = _tools.np.ctypeslib.frombuffer(xbuf, dtype=_tools.np.float64)
     xo = xo.reshape([-1, 2]).copy()
     _tools.lib.libcfree(p_xo)
