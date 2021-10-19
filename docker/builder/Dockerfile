@@ -56,9 +56,9 @@ ENV OSXCROSS_HOST=x86_64-apple-darwin19
 
 ### doc
 USER root
-RUN apt-get update && apt-get install -y python3-pip gmsh gdal-bin python3-scipy && pip3 install gmsh-dev sphinx sphinx-rtd-theme sphinx-autodoc-typehints gdal
+RUN apt-get update && apt-get install -y python3-pip gmsh gdal-bin python3-scipy && pip3 install sphinx sphinx-rtd-theme sphinx-autodoc-typehints gdal
 ENV PYTHONPATH=/usr/local/lib/python3/dist-packages/gmsh-git-Linux64-sdk/lib/
-
+RUN pip3 install -i https://gmsh.info/python-packages --force-reinstall --no-cache-dir gmsh-nox-dev
 USER validator
 
 VOLUME ["/etc/gitlab-runner"]

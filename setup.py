@@ -18,7 +18,8 @@
 # along with this program (see COPYING file).  If not, 
 # see <http://www.gnu.org/licenses/>.
 
-import setuptools 
+from setuptools import setup, Extension
+import pkg_resources
 import sys
 import os
 
@@ -30,10 +31,12 @@ commit_tag = os.environ.get("CI_COMMIT_TAG")
 if commit_tag and (commit_tag.startswith("v-") or commit_tag.startswith("w-")):
     version = commit_tag[2:]
 
+lib_ext = {"linux-x86_64":".so"}[pkg_resources.get_platform()]
+os.environ["SETUPTOOLS_EXT_SUFFIX"] = lib_ext
 
+lib = Extension("seamsh.libseamsh", sources = ["seamshlib/seamsh.c","seamshlib/polymesh.c","seamshlib/robustPredicates.c"])
 
-
-setuptools.setup(
+setup(
     name="seamsh",
     version=version,
     author="Jonathan Lambrechts",
@@ -44,6 +47,7 @@ setuptools.setup(
     include_package_data=True,
     url="https://git.immc.ucl.ac.be/jlambrechts/seamsh",
     packages=["seamsh"],
+    ext_modules = [lib],
     package_dir={"seamsh":"seamsh"},
     package_data={"seamsh":["*.so","*.dll","*.dll.a","*.dylib","COPYING.txt","AUTHORS.txt","LICENSE.txt"]},
     classifiers=[
@@ -60,7 +64,3 @@ setuptools.setup(
     install_requires=["scipy","numpy","gdal","gmsh"],
     python_requires='>=3.6'
 )
-
-
-
-
