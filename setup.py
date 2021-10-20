@@ -19,6 +19,7 @@
 # see <http://www.gnu.org/licenses/>.
 
 from setuptools import setup, Extension
+from setuptools.command.build_ext import build_ext as _build_ext
 from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
 import pkg_resources
 import sys
@@ -32,15 +33,17 @@ commit_tag = os.environ.get("CI_COMMIT_TAG")
 if commit_tag and (commit_tag.startswith("v-") or commit_tag.startswith("w-")):
     version = commit_tag[2:]
 
-lib_ext = {"linux-x86_64":".so"}[pkg_resources.get_platform()]
-os.environ["SETUPTOOLS_EXT_SUFFIX"] = lib_ext
-
 lib = Extension("seamsh.libseamsh", sources = ["seamshlib/seamsh.c","seamshlib/polymesh.c","seamshlib/robustPredicates.c"])
 
 class bdist_wheel(_bdist_wheel):
     def get_tag(self):
         otag = _bdist_wheel.get_tag(self)
         return ("py3", "none", otag[2])
+
+class build_ext(_build_ext):
+    def get_ext_filename(self, fullname):
+        filename = os.path.join(*fullname.split('.')) + ".so"
+        return filename
 
 setup(
     name="seamsh",
@@ -55,8 +58,8 @@ setup(
     packages=["seamsh"],
     ext_modules = [lib],
     package_dir={"seamsh":"seamsh"},
-    cmdclass = {'bdist_wheel':bdist_wheel},
-    package_data={"seamsh":["*.so","*.dll","*.dll.a","*.dylib","COPYING.txt","AUTHORS.txt","LICENSE.txt"]},
+    cmdclass = {'bdist_wheel':bdist_wheel,"build_ext":build_ext},
+    package_data={"seamsh":["*.so","COPYING.txt","AUTHORS.txt","LICENSE.txt"]},
     classifiers=[
         "Environment :: Console",
         "Development Status :: 4 - Beta",

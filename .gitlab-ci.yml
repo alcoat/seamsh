@@ -32,7 +32,7 @@ seamshbuild-windows :
   image : immc/seamsh-build:v0.9
   stage : build
   script:
-    - CC=x86_64-w64-mingw32-gcc python3 setup.py bdist_wheel --plat-name=win_amd64 
+    - LDSHARED="x86_64-w64-mingw32-gcc" LDFLAGS="-fstack-protector-strong -shared -O2" CC=x86_64-w64-mingw32-gcc python3 setup.py bdist_wheel --plat-name=win_amd64
   artifacts:
     paths:
       - dist
