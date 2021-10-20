@@ -76,12 +76,7 @@ def project_points(x, pfrom, pto):
 
 
 libdir = os.path.dirname(os.path.realpath(__file__))
-if platform.system() == "Windows":
-    libpath = os.path.join(libdir, "seamsh.dll")
-elif platform.system() == "Darwin":
-    libpath = os.path.join(libdir, "libseamsh.dylib")
-else:
-    libpath = os.path.join(libdir, "libseamsh.so")
+libpath = os.path.join(libdir, "libseamsh.so")
 
 lib = c.CDLL(libpath)
 
