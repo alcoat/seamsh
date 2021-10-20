@@ -18,7 +18,8 @@
 # along with this program (see COPYING file).  If not, 
 # see <http://www.gnu.org/licenses/>.
 
-from setuptools import setup, Extension
+from setuptools import setup
+from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
 import pkg_resources
 import sys
 import os
@@ -36,6 +37,11 @@ os.environ["SETUPTOOLS_EXT_SUFFIX"] = lib_ext
 
 lib = Extension("seamsh.libseamsh", sources = ["seamshlib/seamsh.c","seamshlib/polymesh.c","seamshlib/robustPredicates.c"])
 
+class bdist_wheel(_bdist_wheel):
+    def get_tag(self):
+        otag = _bdist_wheel.get_tag(self)
+        return ("py3", "none", otag[2])
+
 setup(
     name="seamsh",
     version=version,
@@ -49,6 +55,7 @@ setup(
     packages=["seamsh"],
     ext_modules = [lib],
     package_dir={"seamsh":"seamsh"},
+    cmdclass = {'bdist_wheel':bdist_wheel},
     package_data={"seamsh":["*.so","*.dll","*.dll.a","*.dylib","COPYING.txt","AUTHORS.txt","LICENSE.txt"]},
     classifiers=[
         "Environment :: Console",

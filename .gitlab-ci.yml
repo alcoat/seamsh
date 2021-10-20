@@ -19,16 +19,9 @@
 # see <http://www.gnu.org/licenses/>.
 
 seamshbuild-linux :
-  image : immc/seamsh-build:v0.10
+  image : immc/seamsh-build:v0.9
   stage : build
   script:
-    - cd seamshlib
-    - mkdir build
-    - cd build/
-    - cmake .. -DCMAKE_BUILD_TYPE=Release
-    - make
-    - cp libseamsh.so ../../seamsh
-    - cd ../..
     - python3 setup.py bdist_wheel --plat-name=manylinux1_x86_64
   artifacts:
     paths:
@@ -39,14 +32,7 @@ seamshbuild-windows :
   image : immc/seamsh-build:v0.9
   stage : build
   script:
-    - cd seamshlib
-    - mkdir build-mingw
-    - cd build-mingw
-    - cmake .. -DCMAKE_TOOLCHAIN_FILE=/cmake-mingw -DCMAKE_BUILD_TYPE=Release
-    - make
-    - mv *.dll *.dll.a ../../seamsh
-    - cd ../..
-    - python3 setup.py bdist_wheel --plat-name=win_amd64 
+    - CC=x86_64-w64-mingw32-gcc python3 setup.py bdist_wheel --plat-name=win_amd64 
   artifacts:
     paths:
       - dist
@@ -56,14 +42,7 @@ seamshbuild-osx :
   image : immc/seamsh-build:v0.9
   stage : build
   script:
-    - cd seamshlib
-    - mkdir build-osxcross
-    - cd build-osxcross
-    - $(osxcross-conf) && cmake .. -DCMAKE_TOOLCHAIN_FILE=/osxcross/target/toolchain.cmake -DCMAKE_BUILD_TYPE=Release
-    - make
-    - mv *.dylib ../../seamsh
-    - cd ../../
-    - python3 setup.py bdist_wheel --plat-name=macosx_10_9_x86_64
+    - $(osxcross-conf) && python3 setup.py bdist_wheel --plat-name=macosx_10_9_x86_64
   artifacts:
     paths:
       - dist
@@ -74,7 +53,7 @@ seamshtest :
   stage : test
   script:
     - pip3 install --user dist/*manylinux1_x86_64*
-    - export PYTHONPATH=$HOME/.local/lib/python3/dist-packages/gmsh-git-Linux64-sdk/lib/:PYTHONPATH
+    - export PYTHONPATH=$HOME/.local/lib/python3/dist-packages/gmsh-git-Linux64-sdk/lib/:$PYTHONPATH
     - cd tests
     - python3 testshp.py 
 
@@ -83,7 +62,7 @@ seamshtest-py36 :
   stage : test
   script:
     - pip3 install --user dist/*manylinux1_x86_64*
-    - export PYTHONPATH=$HOME/.local/lib/python3/dist-packages/gmsh-git-Linux64-sdk/lib/:PYTHONPATH
+    - export PYTHONPATH=$HOME/.local/lib/python3/dist-packages/gmsh-git-Linux64-sdk/lib/:$PYTHONPATH
     - cd tests
     - python3 testshp.py 
 
