@@ -42,7 +42,7 @@ seamshbuild-osx :
   image : immc/seamsh-build:v0.9
   stage : build
   script:
-    - $(osxcross-conf) && python3 setup.py bdist_wheel --plat-name=macosx_10_9_x86_64
+    - $(osxcross-conf) & LDSHARED="o64-clang" LDFLAGS="-O2 -DNDEBUG -dynamiclib -Wl,-headerpad_max_install_names" CC=o64-clang python3 setup.py bdist_wheel --plat-name=macosx_10_9_x86_64
   artifacts:
     paths:
       - dist
