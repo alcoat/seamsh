@@ -18,7 +18,7 @@
 # along with this program (see COPYING file).  If not, 
 # see <http://www.gnu.org/licenses/>.
 
-from setuptools import setup
+from setuptools import setup, Extension
 from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
 import pkg_resources
 import sys
