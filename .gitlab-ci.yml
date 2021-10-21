@@ -71,6 +71,7 @@ pages:
   image : immc/seamsh-build:v0.9
   stage : deploy
   script:
+    - pip3 install --user dist/*manylinux1_x86_64*
     - cd doc
     - python3 gen_examples.py
     - make html
