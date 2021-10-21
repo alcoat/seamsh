@@ -32,7 +32,7 @@ if commit_tag and (commit_tag.startswith("v-") or commit_tag.startswith("w-")):
 
 lib = Extension("seamsh.libseamsh", sources = ["seamshlib/seamsh.c","seamshlib/polymesh.c","seamshlib/robustPredicates.c"])
 
-with open("Readme.rst", "r") as fh:
+with open("README.rst", "r") as fh:
     long_description = fh.read()
 
 class bdist_wheel(_bdist_wheel):
