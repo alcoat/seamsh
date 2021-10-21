@@ -25,9 +25,6 @@ import pkg_resources
 import sys
 import os
 
-with open("Readme.rst", "r") as fh:
-    long_description = fh.read()
-
 version = "0.1"
 commit_tag = os.environ.get("CI_COMMIT_TAG")
 if commit_tag and (commit_tag.startswith("v-") or commit_tag.startswith("w-")):
@@ -51,8 +48,6 @@ setup(
     author="Jonathan Lambrechts",
     author_email="jonathan.lambrechts@uclouvain.be",
     description="Ocean mesh generation",
-    long_description=long_description,
-    long_description_content_type = "text/x-rst",
     include_package_data=True,
     url="https://git.immc.ucl.ac.be/jlambrechts/seamsh",
     packages=["seamsh"],

@@ -22,6 +22,7 @@ seamshbuild-linux :
   image : immc/seamsh-build:v0.9
   stage : build
   script:
+    - python3 setup.py sdist
     - python3 setup.py bdist_wheel --plat-name=manylinux1_x86_64
   artifacts:
     paths:
