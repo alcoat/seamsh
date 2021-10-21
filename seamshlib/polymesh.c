@@ -471,7 +471,7 @@ static inline int split_triangle(PolyMesh *pm, int index, double x, double y, Fa
 
           int found_b_bo = 0;
           int found_c_co = 0;
-          for (int i = 0; i < vector_size(touched); ++i) {
+          for (size_t i = 0; i < vector_size(touched); ++i) {
             if (touched[i] == heb || touched[i] == hebo)
               found_b_bo = 1;
             if (touched[i] == hec || touched[i] == heco)
@@ -613,11 +613,11 @@ static Face *Walk(Face *f, double x, double y)
       he = s1 > s2 ? he->next->opposite : he->next->next->opposite;
     else {
       printf("Could not find half-edge in walk for point %g %g on "
-                 "face %g %g %g / %g %g %g / %g %g %g "
+                 "face %g %g / %g %g / %g %g "
                  "(orientation tests %g %g %g)", x, y,
-                 v0->p[0], v0->p[1], v0->p[2],
-                 v1->p[0], v1->p[1], v1->p[2],
-                 v2->p[0], v2->p[1], v2->p[2],
+                 v0->p[0], v0->p[1],
+                 v1->p[0], v1->p[1],
+                 v2->p[0], v2->p[1],
                  s0, s1, s2);
     }
     if(he == NULL) break;
@@ -642,8 +642,7 @@ static int delaunayEdgeCriterionPlaneIsotropic(HalfEdge *he, void *ignore)
 
 int polymesh_n_faces(const PolyMesh *pm) {
   int n = 0;
-  for (int i = 0; i < vector_size(pm->faces); ++i) {
-    int skip = 0;
+  for (size_t i = 0; i < vector_size(pm->faces); ++i) {
     HalfEdge *he = pm->faces[i]->he;
     int tri[3];
     for (int j = 0; j < 3; ++j) {
@@ -657,8 +656,7 @@ int polymesh_n_faces(const PolyMesh *pm) {
 
 void polymesh_faces(const PolyMesh *pm, int *faces) {
   int n = 0;
-  for (int i = 0; i < vector_size(pm->faces); ++i) {
-    int skip = 0;
+  for (size_t i = 0; i < vector_size(pm->faces); ++i) {
     HalfEdge *he = pm->faces[i]->he;
     int tri[3];
     for (int j = 0; j < 3; ++j) {
@@ -713,7 +711,7 @@ void polymesh_add_points(PolyMesh *pm, int n, double *x, int *tags)
   double bbmin[2], bbmax[2];
   get_bounding_box(n, x, bbmin, bbmax);
   double bbcenter[2] = {(bbmin[0]+bbmax[0])/2, (bbmin[1]+bbmax[1])/2};
-  for(size_t i = 0; i < n; i++) {
+  for(int i = 0; i < n; i++) {
     HC[i] = HilbertCoordinates(x[i*2], x[i*2+1], bbcenter[0], bbcenter[1],
                                bbmax[0] - bbcenter[0], 0, 0,
                                bbmax[1] - bbcenter[1]);
@@ -721,7 +719,7 @@ void polymesh_add_points(PolyMesh *pm, int n, double *x, int *tags)
   }
   #define cmp(i,j) (HC[IND[i]]<HC[IND[j]])
   vector_sort_r(IND, cmp);
-  for(size_t i = 0; i < n; i++) {
+  for(int i = 0; i < n; i++) {
     size_t I = IND[i];
     f = Walk(f, x[I*2], x[I*2+1]);
     split_triangle(pm, i, x[I*2], x[I*2+1], f, delaunayEdgeCriterionPlaneIsotropic, NULL, NULL);

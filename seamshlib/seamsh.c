@@ -377,11 +377,11 @@ static int coord_vector_append(double **pts, int *npts, const double *x) {
 }
 
 static int int_vector_append(int **v, int *n, int i) {
-  *(int*)vector_append((void**)v,n,sizeof(int)) = i;
+  return *(int*)vector_append((void**)v,n,sizeof(int)) = i;
 }
 
 static int double_vector_append(double **v, int *n, double i) {
-  *(double*)vector_append((void**)v,n,sizeof(double)) = i;
+  return *(double*)vector_append((void**)v,n,sizeof(double)) = i;
 }
 
 static void extract_boundaries(const double *x_p, const double *x_size, const int *vtag, int n_tri, const int *tri, const int *tri_color,double **xo, int *nxo, int **l, int *nl)
@@ -412,7 +412,6 @@ static void extract_boundaries(const double *x_p, const double *x_size, const in
       int firstp = tri_f[i*3+j];
       int curt = i;
       int p = j;
-      int firstpo = *nxo-1;
       touched[i] = 1;
       int curp;
       do {
