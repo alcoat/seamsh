@@ -71,13 +71,7 @@ pages:
   image : immc/seamsh-build:v0.9
   stage : deploy
   script:
-    - cd seamshlib
-    - mkdir build
-    - cd build/
-    - cmake .. -DCMAKE_BUILD_TYPE=Release
-    - make
-    - cp libseamsh.so ../../seamsh
-    - cd ../../doc
+    - cd doc
     - python3 gen_examples.py
     - make html
     - mv _build/html ../public
