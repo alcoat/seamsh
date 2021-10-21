@@ -47,7 +47,12 @@ def _generate_unique_points(x):
     eps = _tools.np.linalg.norm(bbmax-bbmin)*1e-12
     eps = 1e-12
     cid = 0
-    for p0, p1 in tree.query_pairs(eps):
+    pairs = _tools.np.array(list(tree.query_pairs(eps)))
+    #sorting the pairs is necessary to handle points connecting more than 2 lines
+    pairs.sort(axis=1)
+    pairsint64 = pairs[:,0].astype(_tools.np.int64)*2**32+pairs[:,1].astype(_tools.np.int64)
+    pairs = pairs[pairsint64.argsort(),:]
+    for p0, p1 in pairs:
         uid = max(unique_id[p0], unique_id[p1])
         if uid == -1:
             uid = cid

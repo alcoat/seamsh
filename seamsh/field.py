@@ -116,4 +116,6 @@ class Raster:
         det = gm[5]*gm[1]-gm[2]*gm[4]
         pixx = ((lon-gm[0])*gm[5]-(lat-gm[3])*gm[2])/det
         pixy = ((lat-gm[3])*gm[1]-(lon-gm[0])*gm[4])/det
-        return self._data[pixy.astype(int), pixx.astype(int)]
+        pixy = _tools.np.clip(pixy.astype(int),0,self._data.shape[0]-1)
+        pixx = _tools.np.clip(pixx.astype(int),0,self._data.shape[1]-1)
+        return self._data[pixy, pixx]
