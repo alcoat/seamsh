@@ -55,7 +55,6 @@ seamshtest :
   stage : test
   script:
     - pip3 install --user dist/*manylinux1_x86_64*
-    - export PYTHONPATH=$HOME/.local/lib/python3/dist-packages/gmsh-git-Linux64-sdk/lib/:$PYTHONPATH
     - cd tests
     - python3 testshp.py 
 
