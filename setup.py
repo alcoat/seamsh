@@ -35,7 +35,7 @@ lib = Extension("seamsh.libseamsh", sources = ["seamshlib/seamsh.c","seamshlib/p
 with open("README.rst", "r") as fh:
     long_description = fh.read()
 with open("CHANGELOG.rst", "r") as fh:
-    long_description += "\n\n" + fh.read()
+    long_description += "\n" + fh.read()
 
 class bdist_wheel(_bdist_wheel):
     def get_tag(self):
