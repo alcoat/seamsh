@@ -48,7 +48,8 @@ static void *_vectorPush(void **m, size_t s) {
   size_t *n = (*(size_t**)m) - 2;
   n[1] += s;
   if (n[0] < n[1]) {
-    n[0] *= 2;
+    while (n[0] < n[1])
+      n[0] *= 2;
     n = (size_t*)realloc(n, n[0] + 2 * sizeof(size_t));
     *m= n + 2;
   }
