@@ -290,6 +290,7 @@ def mesh(domain: _geometry.Domain, filename: str,
             appended), if == "-", an interactive gmsh graphical window will pop
             up after each meshing step.
     """
+    gmsh.model.add(str(_tools.uuid.uuid4()))
     _tools.log("Generate mesh", True)
     domain._build_topology()
     _create_gmsh_geometry(domain)
