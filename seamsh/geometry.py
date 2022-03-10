@@ -243,6 +243,8 @@ class Domain:
                                  "' not found in shapefile")
         layerproj = layer.GetSpatialRef()
         for i in layer:
+            if i.geometry() is None :
+                continue
             phys = (i.GetField(physfield)
                     if not (physfield is None) else "boundary")
             self._add_geometry(i.geometry(), phys, layerproj, curve_type,
