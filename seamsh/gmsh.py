@@ -23,9 +23,9 @@ from . import geometry as _geometry
 from . import _tools
 __all__ = ["mesh", "convert_to_gis"]
 
-gmsh.initialize()
-gmsh.option.setNumber("General.Terminal", 1)
-gmsh.option.setNumber("General.Verbosity", 2)
+if gmsh.option.getNumber("General.Terminal") == 0.0:
+    gmsh.initialize()
+    gmsh.option.setNumber("General.Verbosity", 2)
 
 
 def _gmsh_curve_geo(curve_type: _geometry.CurveType, pointsid):
