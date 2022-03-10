@@ -1,5 +1,13 @@
 Changes
 =======
+seamsh 0.4.1
+------------
+* do not crash on features without geometry in shapefiles
+
+seamsh 0.4.1
+------------
+* do not call gmsh.initialize() if already initialized
+* use a temporary gmsh model for meshing
 
 seamsh 0.4.0
 ------------
