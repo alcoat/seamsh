@@ -21,7 +21,7 @@
 import gmsh
 from . import geometry as _geometry
 from . import _tools
-__all__ = ["mesh", "convert_to_gis"]
+__all__ = ["mesh", "convert_to_gis", "reproject"]
 
 if gmsh.option.getNumber("General.Terminal") == 0.0:
     gmsh.initialize()
@@ -271,11 +271,26 @@ def _mesh_successive(domain: _geometry.Domain,
     gmsh.model.mesh.field.remove(bg_field)
 
 
+def _reproject(input_srs, output_srs):
+    ntags, nx, _ = gmsh.model.mesh.get_nodes()
+    nx = nx.reshape(-1,3)
+    nx = _tools.project_points(nx, input_srs, output_srs)
+    for i,x in zip(ntags, nx):
+        gmsh.model.mesh.set_node(i, [x[0], x[1], 0], [])
+    for _, tag in gmsh.model.get_entities(0):
+        _, x, _ = gmsh.model.mesh.get_nodes(0, tag)
+        if x.size == 0:
+            gmsh.model.remove_entities([(0,tag)])
+        else:
+            gmsh.model.set_coordinates(tag, x[0], x[1], x[2])
+
+
 def mesh(domain: _geometry.Domain, filename: str,
          mesh_size: _geometry.MeshSizeCallback,
          version: float = 4.0,
          intermediate_file_name: str = None,
-         smoothness=0.3) -> None:
+         smoothness=0.3,
+         output_srs: _tools.osr.SpatialReference = None) -> None:
     """ Calls gmsh to generate a mesh from a geometry and a mesh size callback
 
     Args:
@@ -283,12 +298,14 @@ def mesh(domain: _geometry.Domain, filename: str,
         filename: output mesh file (.msh)
         mesh_size: callbable prescribing the mesh element size
         version: msh file version (typically 2.0 or 4.0)
-        smoothness: Maximum gradation of the mesh size, any positive value
-            is valid but a value in the range [0.1,0.5] is recommended.
         intermediate_file_name: if not None, save intermediate meshes to those
             files for debugging purpose (suffixes and extensions will be
             appended), if == "-", an interactive gmsh graphical window will pop
             up after each meshing step.
+        smoothness: Maximum gradation of the mesh size, any positive value
+            is valid but a value in the range [0.1,0.5] is recommended.
+        output_srs : coordinate system of the output file (if None, the
+            coordinate system of the domain is used).
     """
     gmsh.model.add(str(_tools.uuid.uuid4()))
     _tools.log("Generate mesh", True)
@@ -309,9 +326,35 @@ def mesh(domain: _geometry.Domain, filename: str,
             rm.append(e)
     if len(rm) != 0:
         gmsh.model.removeEntities(rm, True)
+    if output_srs is not None:
+        _reproject(domain._projection, output_srs)
+
     _tools.log("Write \"{}\" (msh version {})".format(filename, version))
     gmsh.option.setNumber("Mesh.MshFileVersion", version)
     gmsh.write(filename)
+    gmsh.model.remove()
+
+
+def reproject(input_filename : str,
+              input_srs : _tools.osr.SpatialReference,
+              output_filename : str,
+              output_srs : _tools.osr.SpatialReference,
+              output_version: float = 4.0):
+    """ Change the coordinate of an existing mesh.
+
+    Args:
+        input_filename: input mesh file (any format readable by gmsh).
+        input_srs : coordinate system of the input mesh
+        output_filename: output mesh file (.msh)
+        output_srs : coordinate system of the output file (if None, the
+            coordinate system of the domain is used).
+        output_version: msh file version (typically 2.0 or 4.0)
+    """
+    gmsh.model.add(str(_tools.uuid.uuid4()))
+    gmsh.open(input_filename)
+    _reproject(input_srs, output_srs)
+    gmsh.option.setNumber("Mesh.MshFileVersion", output_version)
+    gmsh.write(output_filename)
     gmsh.model.remove()
 
 

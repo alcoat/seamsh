@@ -1,5 +1,10 @@
 Changes
 =======
+seamsh 0.4.3
+------------
+* add output_srs parameter to gmsh.mesh
+* add gmsh.reproject function
+
 seamsh 0.4.2
 ------------
 * do not crash on features without geometry in shapefiles
