@@ -409,6 +409,91 @@ def convert_to_gis(input_filename: str,
     out_data_source.CommitTransaction()
     gmsh.model.remove()
 
+def convert_to_ugrid_mesh_file(input_filename: str,
+                               dico_var: dict,
+                               projection: _tools.osr.SpatialReference,
+                               output_filename: str) -> None:
+    """ Converts a triangular gmsh mesh into netcdf ugrid mesh file.
+
+    Args:
+        input_filename : any mesh file readable by gmsh (typically
+            a .msh file)
+        dico_var : a dictionary of variable name with all required informations
+        projection: the projection assigned to the mnt layer
+        output_filename : netcdf ugrid mesh file (.nc)
+    """
+    _tools.log("Convert \"{}\" into \"{}\"".format(input_filename,
+               output_filename), True)
+    gmsh.model.add(str(_tools.uuid.uuid4()))
+    gmsh.open(input_filename)
+
+    tri_i, tri_n = gmsh.model.mesh.getElementsByType(2)
+    tri_n = tri_n.reshape([-1, 3])
+
+    node_i, nodes, _ = gmsh.model.mesh.getNodes()
+    nodes = nodes.reshape([-1, 3])
+    x = nodes[:,0]
+    y = nodes[:,1]
+
+    # unit_proj = projection.GetLinearUnits()
+    # print(unit_proj)
+    
+    node = _tools.np.arange(0,len(x),1)
+    element = _tools.np.subtract(tri_n, 1)
+    nvertex = _tools.np.array([0,1,2], dtype='int32')
+    nele = _tools.np.arange(0,len(tri_i),1, dtype="int32")
+    mesh_topology = _tools.np.array([-2147483647], dtype='int32')
+    single = _tools.np.array([0], dtype='int32')
+    
+    ds = _tools.xr.Dataset()
+    
+    ds.coords['longitude'] = (('node'),_tools.np.double(x))
+    ds['longitude'].attrs= {'long_name': 'longitude',
+                    'standard_name': 'longitude',
+                    'units': 'm',
+                    'positive': 'east'}
+
+    ds.coords['latitude'] = (('node'),_tools.np.double(y))
+    ds['latitude'].attrs ={'long_name': 'latitude',
+                    'standard_name': 'latitude',
+                    'units': 'm',
+                    'positive': 'north'}
+
+    ds['element'] = (('nele', 'nvertex'),element)
+    ds['element'].attrs = {'long_name': 'element',
+                           'standard_name': 'face_node_connectivity',
+                           'units': 'nondimensional',
+                           'start_index': 0}
+
+
+    ds['mesh_topology'] = ('single',mesh_topology)
+    ds['mesh_topology'].attrs = {'long_name': 'mesh topology',
+                                 'standard_name': 'mesh_topology',
+                                 'node_coordinates': 'longitude latitude',
+                                 'face_node_connectivity': 'element',
+                                 'cf_role': 'mesh_topology',
+                                 'topology_dimension': 2}
+    
+    for var in dico_var.keys():
+        var_val = dico_var[var]['callable_func'](nodes, projection)
+        ds[var] = (('node'),var_val)
+        ds[var].attrs = {'long_name': dico_var[var]['long_name'],
+                         'standard_name': dico_var[var]['standard_name'],
+                         'location': 'node',
+                         'mesh': 'mesh_topology',
+                         'units': dico_var[var]['units']}
+
+    encoding = {v: {'zlib': True, 'complevel': 4} for v in dico_var.keys()}
+    ds.attrs = {'title': gmsh.model.getCurrent(),
+                'institution': 'Institution Name',
+                'source': 'UCL(SEAMSH) & BRGM',
+                'references': 'REF',
+                'Conventions': 'CF-1.6, UGRID-1.0'}
+    
+    ds.to_netcdf(path=output_filename, format='NETCDF4',encoding=encoding)
+    # ds.to_netcdf(path=output_filename, format='NETCDF4')
+
+    gmsh.model.remove()
 
 @_tools.atexit.register
 def _finalize():
