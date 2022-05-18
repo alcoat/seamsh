@@ -495,6 +495,34 @@ def convert_to_ugrid_mesh_file(input_filename: str,
 
     gmsh.model.remove()
 
+
+def convert_to_wave_watch_3(input_filename: str,
+                               output_filename: str) -> None:
+    """ Converts a triangular gmsh mesh into msh file that can be read by WaveWatch III.
+
+    Args:
+        input_filename : any mesh file readable by gmsh (typically
+            a .msh file)
+        output_filename : WaveWatch III  msh file(.msh)
+    """
+    _tools.log("Convert \"{}\" into \"{}\"".format(input_filename,
+               output_filename), True)
+    gmsh.model.add(str(_tools.uuid.uuid4()))
+    gmsh.open(input_filename)
+    for dim, tag in gmsh.model.get_physical_groups():
+        name = gmsh.model.get_physical_name(dim, tag)
+        if name:
+            gmsh.model.remove_physical_name(name)
+    for dim, tag in gmsh.model.get_entities(1):
+        nodes, _, _ = gmsh.model.mesh.get_nodes(1, tag)
+        tag0 = gmsh.model.add_discrete_entity(0)
+        gmsh.model.mesh.add_elements_by_type(tag0, 15, [], nodes)
+    gmsh.option.set_number("Mesh.MshFileVersion", 2.0)
+    gmsh.write(output_filename)
+
+    gmsh.model.remove()
+
+
 @_tools.atexit.register
 def _finalize():
     gmsh.finalize()
