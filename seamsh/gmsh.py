@@ -145,7 +145,7 @@ def _create_gmsh_geometry(domain: _geometry.Domain):
         tag = gmsh.model.addPhysicalGroup(0, tags)
         gmsh.model.setPhysicalName(0, tag, name)
     tag = gmsh.model.addPhysicalGroup(2, [stag])
-    gmsh.model.setPhysicalName(2, stag, "domain")
+    gmsh.model.setPhysicalName(2, tag, "domain")
 
 
 def _mesh_bgrid(domain: _geometry.Domain,
