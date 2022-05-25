@@ -34,6 +34,12 @@ from enum import Enum
 import platform
 import ctypes as c
 
+try :
+    import xarray as xr
+    xarray_available = True
+except:
+    xarray_available = False
+
 
 def log(txt, title=False):
     decorator = " * " if title else ""

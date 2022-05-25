@@ -422,6 +422,9 @@ def convert_to_ugrid_mesh_file(input_filename: str,
         projection: the projection assigned to the mnt layer
         output_filename : netcdf ugrid mesh file (.nc)
     """
+    if not _tools.xarray_available:
+        raise ValueError("The xarray python library is required to write ugrid files.")
+
     _tools.log("Convert \"{}\" into \"{}\"".format(input_filename,
                output_filename), True)
     gmsh.model.add(str(_tools.uuid.uuid4()))
