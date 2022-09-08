@@ -48,6 +48,7 @@ def _generate_unique_points(x):
     eps = 1e-12
     cid = 0
     pairs = _tools.np.array(list(tree.query_pairs(eps)))
+    if pairs.shape[0] == 0 : pairs = pairs.reshape(-1,2)
     #sorting the pairs is necessary to handle points connecting more than 2 lines
     pairs.sort(axis=1)
     pairsint64 = pairs[:,0].astype(_tools.np.int64)*2**32+pairs[:,1].astype(_tools.np.int64)

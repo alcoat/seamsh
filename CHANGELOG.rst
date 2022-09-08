@@ -1,5 +1,11 @@
 Changes
 =======
+seamsh 0.4.4
+------------
+* fix unrefine when no identical points
+* ugrid conversion (requires xarray)
+* fix domain physical name
+
 seamsh 0.4.3
 ------------
 * add output_srs parameter to gmsh.mesh
