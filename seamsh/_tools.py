@@ -40,6 +40,12 @@ try :
 except:
     xarray_available = False
 
+try :
+    from shapely.geometry import Point, Polygon
+    shapely_available = True
+except:
+    shapely_available = False
+
 
 def log(txt, title=False):
     decorator = " * " if title else ""

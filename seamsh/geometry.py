@@ -102,6 +102,7 @@ class Domain:
         self._interior_curves = []
         self._interior_points = []
         self._curves = []
+        self._area = []
 
     def _build_topology(self):
         _tools.log("Build topology")
@@ -205,14 +206,17 @@ class Domain:
             0, self._curveloops.pop(_tools.np.argmax(loopbboxarea)))
 
     def _add_geometry(self, geometry, tag, projection, curve_type, interior,
-                      onlypoints=False):
+                      onlypoints=False, area=False):
         if geometry.GetGeometryCount() != 0:
             for subg in geometry:
                 self._add_geometry(subg, tag, projection,
-                                   curve_type, interior, onlypoints)
+                                   curve_type, interior, onlypoints, area)
             return
         if onlypoints:
             self.add_interior_points(geometry.GetPoints(), tag, projection)
+        elif area:
+            self.add_area_curve(geometry.GetPoints(), tag, 
+                                projection, curve_type)
         else:
             if interior:
                 self.add_interior_curve(geometry.GetPoints(), tag,
@@ -222,7 +226,7 @@ class Domain:
                                         projection, curve_type)
 
     def _add_shapefile(self, filename, physical_name_field,
-                       interior, points, curve_type):
+                       interior, points, area, curve_type):
         progress = _tools.ProgressLog(
                     "Import features from \"{}\"".format(filename), True)
         if filename[-5:] == ".gpkg":
@@ -249,7 +253,7 @@ class Domain:
             phys = (i.GetField(physfield)
                     if not (physfield is None) else "boundary")
             self._add_geometry(i.geometry(), phys, layerproj, curve_type,
-                               interior, points)
+                               interior, points, area)
             progress.log("{} features imported".format(count))
             count += 1
         progress.end()
@@ -296,6 +300,23 @@ class Domain:
         curve = _Curve(points, physical_tag, curve_type, projection)
         self._interior_curves.append(curve)
 
+    def add_area_curve(self, points: _tools.np.ndarray, physical_tag: str,
+                       projection: _tools.osr.SpatialReference,
+                       curve_type: CurveType = CurveType.POLYLINE) -> None:
+        """ Add a tagged curve to the domain area.
+
+        Args:
+            points: the curve control points [n,2]
+            physical_tag: the curve physical tag
+            projection: the points coordinate system
+            curve_type: curve interpolation
+        """
+        if not _tools.shapely_available:
+            raise ValueError("The shapely python library is required to use area.")
+        
+        curve = _Curve(points, physical_tag, curve_type, projection)
+        self._area.append(_tools.Polygon(curve.points))
+
     def add_interior_points_shp(self, filename: str,
                                 physical_name_field: str = None) -> None:
         """ Adds all points of a shape file as forced mesh points.
@@ -305,7 +326,8 @@ class Domain:
             physical_name_field: name of an attribute string field with the
                 curves physical tags
         """
-        self._add_shapefile(filename, physical_name_field, None, True, None)
+        self._add_shapefile(filename, physical_name_field, None, True, 
+                            False, None)
 
     def add_interior_curves_shp(self, filename: str,
                                 physical_name_field: str = None,
@@ -321,7 +343,7 @@ class Domain:
             curve_type: curves interpolation
         """
         self._add_shapefile(filename, physical_name_field, True, False,
-                            curve_type)
+                            False, curve_type)
 
     def add_boundary_curves_shp(self, filename: str,
                                 physical_name_field: str = None,
@@ -337,7 +359,22 @@ class Domain:
             curve_type: curves interpolation
         """
         self._add_shapefile(filename, physical_name_field, False, False,
-                            curve_type)
+                            False, curve_type)
+
+    def add_area_curves_shp(self, filename: str,
+                            physical_name_field: str = None,
+                            curve_type: CurveType = CurveType.POLYLINE
+                            ) -> None:
+        """ Adds all lines, polylines and polygons of a shapefile as area
+
+        Args:
+            filename: path to a shapefile.
+            physical_name_field: name of an attribute string field containing
+                the curves physical tags
+            curve_type: curves interpolation
+        """
+        self._add_shapefile(filename, physical_name_field, False, False,
+                            True, curve_type)
 
 from .gmsh import _curve_sample
 

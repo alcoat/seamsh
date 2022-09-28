@@ -48,10 +48,12 @@ class Distance:
         def size(x, proj):
             return _tools.np.full([x.shape[0]], sampling)
 
-        for icurve, curve in enumerate(all_curves_iter):
+        icurve = 0
+        for curve in all_curves_iter:
             if (tags is None) or (curve.tag in tags):
                 points.append(_curve_sample(curve, size, domain._projection))
-                progress.log("{} features sampled".format(icurve+1))
+                icurve += 1
+                progress.log("{} features sampled".format(icurve))
         for point in _tools.chain(domain._interior_points):
             if (tags is None) or (point.tag in tags):
                 points.append(point.x)
@@ -119,3 +121,50 @@ class Raster:
         pixy = _tools.np.clip(pixy.astype(int),0,self._data.shape[0]-1)
         pixx = _tools.np.clip(pixx.astype(int),0,self._data.shape[1]-1)
         return self._data[pixy, pixx]
+
+class Inpoly:
+    """Callable evaluating the membership to a set of polygons
+
+    """
+
+    def __init__(self, domain: _Domain, 
+                 tags: _tools.List[str] = None):
+        """
+        Args:
+            domain: a Domain object containing the set of curves/polygons
+            tags: List of physical tags specifying the objects from the domain
+                which should be converted to Shapely-Polygon.
+                if None, all curves are taken into account.
+        """
+        _tools.log("Initialisation Inpoly", True)
+        self._area = domain._area
+        self._projection = domain._projection
+
+    def __call__(self, x: _tools.np.ndarray,
+                 projection: _tools.osr.SpatialReference
+                 ) -> _tools.np.ndarray:
+        """Indicate for each point of x if it belongs to a set of polygons.
+
+        Args:
+            x: the points [n,2]
+            projection: the coordinate system of the points, should be
+                the same coordinate system as the domain, otherwise no
+                conversion is done and an exception is raised.
+        Returns:
+            True if the point belogs to a polygon / False otherwise. [n]
+        """
+        if not projection.IsSame(self._projection):
+            raise ValueError("incompatible projection")
+        
+        xs = []
+        inpoly = []
+        for xi in x:
+                xs.append(_tools.Point(xi[0], xi[1]))
+                inpoly.append(False)
+        for polygon in self._area:
+            for i, xsi in enumerate(xs):
+                    if not inpoly[i]:
+                        inpoly[i] = xsi.within(polygon)
+
+        return inpoly
+
