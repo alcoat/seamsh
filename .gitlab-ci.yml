@@ -51,7 +51,7 @@ seamshbuild-osx :
     expire_in: 1 day
 
 seamshtest :
-  image : immc/seamsh-valid:v0.2
+  image : immc/seamsh-valid:v0.3
   stage : test
   script:
     - pip3 install --user dist/*manylinux1_x86_64*
