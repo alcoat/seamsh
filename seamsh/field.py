@@ -137,7 +137,17 @@ class Inpoly:
                 if None, all curves are taken into account.
         """
         _tools.log("Initialisation Inpoly", True)
-        self._area = domain._area
+        self._zones = []
+        msg = "Sampling features for zone definition"
+        progress = _tools.ProgressLog(msg)
+
+        izone = 0
+        for zone in domain._zones:
+            if (tags is None) or (zone.tag in tags):
+                self._zones.append(zone.zone)
+                izone +=1
+                progress.log("{} features sampled".format(izone))
+        progress.end()
         self._projection = domain._projection
 
     def __call__(self, x: _tools.np.ndarray,
