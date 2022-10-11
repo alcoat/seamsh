@@ -42,7 +42,7 @@ domain_poly.add_boundary_curves_shp("data2/area_utm31.gpkg", "name", CurveType.P
 
 dist_coast = seamsh.field.Distance(domain, 100, ["coast", "island"])
 dist_porquerolles = seamsh.field.Distance(domain, 20, ["porquerolles"])
-in_area = seamsh.field.Inpoly(domain_poly)
+in_area = seamsh.field.Inpoly(domain_poly, ["noraster"])
 
 
 def mesh_size(x, projection):
