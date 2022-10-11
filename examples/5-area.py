@@ -27,6 +27,7 @@ from osgeo import osr
 domain_srs = osr.SpatialReference()
 domain_srs.ImportFromProj4("+proj=utm +ellps=WGS84 +zone=31")
 domain = seamsh.geometry.Domain(domain_srs)
+domain_poly = seamsh.geometry.Domain(domain_srs)
 
 domain.add_boundary_curves_shp("data2/data_no_duplicate.shp",
                                "physical", CurveType.POLYLINE)
@@ -37,11 +38,11 @@ domain.add_interior_points_shp("data2/interior_points.shp", "physical")
 
 bath_field = seamsh.field.Raster("data2/medit.tiff")
 
-domain.add_area_curves_shp("data2/area_utm31.gpkg", "name", CurveType.POLYLINE)
+domain_poly.add_boundary_curves_shp("data2/area_utm31.gpkg", "name", CurveType.POLYLINE)
 
 dist_coast = seamsh.field.Distance(domain, 100, ["coast", "island"])
 dist_porquerolles = seamsh.field.Distance(domain, 20, ["porquerolles"])
-in_area = seamsh.field.Inpoly(domain)
+in_area = seamsh.field.Inpoly(domain_poly)
 
 
 def mesh_size(x, projection):

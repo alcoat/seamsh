@@ -127,28 +127,27 @@ class Inpoly:
 
     """
 
-    def __init__(self, domain: _Domain, 
-                 tags: _tools.List[str] = None):
+    def __init__(self, domain: _Domain):
         """
         Args:
             domain: a Domain object containing the set of curves/polygons
-            tags: List of physical tags specifying the objects from the domain
-                which should be converted to Shapely-Polygon.
-                if None, all curves are taken into account.
         """
+        if not _tools.shapely_available:
+            raise ValueError("The shapely python module is required to use Inpoly fields.")
         _tools.log("Initialisation Inpoly", True)
-        self._zones = []
-        msg = "Sampling features for zone definition"
-        progress = _tools.ProgressLog(msg)
-
-        izone = 0
-        for zone in domain._zones:
-            if (tags is None) or (zone.tag in tags):
-                self._zones.append(zone.zone)
-                izone +=1
-                progress.log("{} features sampled".format(izone))
-        progress.end()
         self._projection = domain._projection
+
+        domain._build_topology()
+        self._area = []
+        for ll in domain._curveloops:
+            ptsid = []
+            for lid, o in ll :
+                l = domain._curves[lid]
+                ptsid.extend(l.pointsid if o else np.flip(l.pointsid))
+            assert(ptsid[-1] == ptsid[0])
+            ptsid = ptsid[:-1]
+            pts = domain._points[ptsid]
+            self._area.append(_tools.shapely.geometry.Polygon(pts))
 
     def __call__(self, x: _tools.np.ndarray,
                  projection: _tools.osr.SpatialReference
@@ -161,20 +160,17 @@ class Inpoly:
                 the same coordinate system as the domain, otherwise no
                 conversion is done and an exception is raised.
         Returns:
-            True if the point belogs to a polygon / False otherwise. [n]
+            True if the point belongs to a polygon / False otherwise. [n]
         """
-        if not projection.IsSame(self._projection):
-            raise ValueError("incompatible projection")
-        
+        x = _tools.project_points(x, projection, self._projection)
+
         xs = []
-        inpoly = []
-        for xi in x:
-                xs.append(_tools.Point(xi[0], xi[1]))
-                inpoly.append(False)
+        inpoly = _tools.np.full(x.shape[0], False)
+        xs = list(_tools.shapely.geometry.Point(xi[0], xi[1]) for xi in x)
         for polygon in self._area:
             for i, xsi in enumerate(xs):
-                    if not inpoly[i]:
-                        inpoly[i] = xsi.within(polygon)
+                if not inpoly[i]:
+                    inpoly[i] = xsi.within(polygon)
 
         return inpoly
 
