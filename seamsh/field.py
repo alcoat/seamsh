@@ -127,10 +127,13 @@ class Inpoly:
 
     """
 
-    def __init__(self, domain: _Domain):
+    def __init__(self, domain: _Domain,
+                 tags: _tools.List[str] = None):
         """
         Args:
-            domain: a Domain object containing the set of curves/polygons
+            domain: a Domain object containing the set of curves
+            tags: List of physical tags specifying the curve from the domain.
+                if None, all curves are taken into account.
         """
         if not _tools.shapely_available:
             raise ValueError("The shapely python module is required to use Inpoly fields.")
@@ -140,14 +143,15 @@ class Inpoly:
         domain._build_topology()
         self._area = []
         for ll in domain._curveloops:
-            ptsid = []
-            for lid, o in ll :
-                l = domain._curves[lid]
-                ptsid.extend(l.pointsid if o else np.flip(l.pointsid))
-            assert(ptsid[-1] == ptsid[0])
-            ptsid = ptsid[:-1]
-            pts = domain._points[ptsid]
-            self._area.append(_tools.shapely.geometry.Polygon(pts))
+            if (tags is None) or (ll.tag in tags):
+                ptsid = []
+                for lid, o in ll :
+                    l = domain._curves[lid]
+                    ptsid.extend(l.pointsid if o else np.flip(l.pointsid))
+                assert(ptsid[-1] == ptsid[0])
+                ptsid = ptsid[:-1]
+                pts = domain._points[ptsid]
+                self._area.append(_tools.shapely.geometry.Polygon(pts))
 
     def __call__(self, x: _tools.np.ndarray,
                  projection: _tools.osr.SpatialReference
