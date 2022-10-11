@@ -41,7 +41,7 @@ except:
     xarray_available = False
 
 try :
-    from shapely.geometry import Point, Polygon
+    import shapely.geometry
     shapely_available = True
 except:
     shapely_available = False
