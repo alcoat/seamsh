@@ -48,10 +48,12 @@ class Distance:
         def size(x, proj):
             return _tools.np.full([x.shape[0]], sampling)
 
-        for icurve, curve in enumerate(all_curves_iter):
+        icurve = 0
+        for curve in all_curves_iter:
             if (tags is None) or (curve.tag in tags):
                 points.append(_curve_sample(curve, size, domain._projection))
-                progress.log("{} features sampled".format(icurve+1))
+                icurve += 1
+                progress.log("{} features sampled".format(icurve))
         for point in _tools.chain(domain._interior_points):
             if (tags is None) or (point.tag in tags):
                 points.append(point.x)
@@ -119,3 +121,60 @@ class Raster:
         pixy = _tools.np.clip(pixy.astype(int),0,self._data.shape[0]-1)
         pixx = _tools.np.clip(pixx.astype(int),0,self._data.shape[1]-1)
         return self._data[pixy, pixx]
+
+class Inpoly:
+    """Callable evaluating the membership to a set of polygons
+
+    """
+
+    def __init__(self, domain: _Domain,
+                 tags: _tools.List[str] = None):
+        """
+        Args:
+            domain: a Domain object containing the set of curves
+            tags: List of physical tags specifying the curve from the domain.
+                if None, all curves are taken into account.
+        """
+        if not _tools.shapely_available:
+            raise ValueError("The shapely python module is required to use Inpoly fields.")
+        _tools.log("Initialisation Inpoly", True)
+        self._projection = domain._projection
+
+        domain._build_topology()
+        self._area = []
+        for ll in domain._curveloops:
+            if (tags is None) or (ll.tag in tags):
+                ptsid = []
+                for lid, o in ll :
+                    l = domain._curves[lid]
+                    ptsid.extend(l.pointsid if o else np.flip(l.pointsid))
+                assert(ptsid[-1] == ptsid[0])
+                ptsid = ptsid[:-1]
+                pts = domain._points[ptsid]
+                self._area.append(_tools.shapely.geometry.Polygon(pts))
+
+    def __call__(self, x: _tools.np.ndarray,
+                 projection: _tools.osr.SpatialReference
+                 ) -> _tools.np.ndarray:
+        """Indicate for each point of x if it belongs to a set of polygons.
+
+        Args:
+            x: the points [n,2]
+            projection: the coordinate system of the points, should be
+                the same coordinate system as the domain, otherwise no
+                conversion is done and an exception is raised.
+        Returns:
+            True if the point belongs to a polygon / False otherwise. [n]
+        """
+        x = _tools.project_points(x, projection, self._projection)
+
+        xs = []
+        inpoly = _tools.np.full(x.shape[0], False)
+        xs = list(_tools.shapely.geometry.Point(xi[0], xi[1]) for xi in x)
+        for polygon in self._area:
+            for i, xsi in enumerate(xs):
+                if not inpoly[i]:
+                    inpoly[i] = xsi.within(polygon)
+
+        return inpoly
+

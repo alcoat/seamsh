@@ -83,10 +83,10 @@ class _Curve:
 
 
 class _Point:
+
     def __init__(self, x, tag):
         self.tag = tag
         self.x = x
-
 
 class Domain:
     """ List the domain boundaries, forced mesh points and

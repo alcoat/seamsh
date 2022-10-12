@@ -22,13 +22,13 @@ FROM ubuntu:20.04
 
 RUN apt update
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt update &&  apt install -y git python3 python3-numpy python3-scipy python3-petsc4py python3-pip gdal-bin
+RUN apt update &&  apt install -y git python3 python3-numpy python3-scipy python3-petsc4py python3-pip gdal-bin python3-shapely
 
 VOLUME ["/etc/gitlab-runner"]
 
 RUN useradd -ms /bin/bash validator
 USER validator
 RUN pip3 install numpy
-RUN pip3 install -i https://gmsh.info/python-packages --force-reinstall --no-cache-dir gmsh-nox-dev
+RUN pip3 install -i https://gmsh.info/python-packages-dev-nox --force-reinstall --no-cache-dir gmsh
 RUN pip3 install gdal
 WORKDIR /home/validator
