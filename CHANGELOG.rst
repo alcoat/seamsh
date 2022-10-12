@@ -1,5 +1,9 @@
 Changes
 =======
+seamsh 0.4.5
+------------
+* Inpoly field (requires shapely)
+
 seamsh 0.4.4
 ------------
 * fix unrefine when no identical points
