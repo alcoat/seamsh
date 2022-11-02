@@ -1,5 +1,9 @@
 Changes
 =======
+seamsh 0.4.6
+------------
+* License files in source package
+
 seamsh 0.4.5
 ------------
 * Inpoly field (requires shapely)
