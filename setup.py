@@ -61,7 +61,8 @@ setup(
     ext_modules = [lib],
     package_dir={"seamsh":"seamsh"},
     cmdclass = {'bdist_wheel':bdist_wheel,"build_ext":build_ext},
-    package_data={"seamsh":["*.so","COPYING.txt","AUTHORS.txt","LICENSE.txt"]},
+    package_data={"seamsh":["*.so"]},
+    license_files=["COPYING.txt","AUTHORS.txt","LICENSE.txt"],
     classifiers=[
         "Environment :: Console",
         "Development Status :: 4 - Beta",
