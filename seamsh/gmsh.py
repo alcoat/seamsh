@@ -272,6 +272,11 @@ def _mesh_successive(domain: _geometry.Domain,
 
 
 def _reproject(input_srs, output_srs):
+    if input_srs == None:
+        p = gmsh.model.get_attribute("Projection")
+        if len(p) == 2 and p[0] == "WKT":
+            input_srs = _tools.osr.SpatialReference()
+            input_srs.ImportFromWkt(p[1])
     ntags, nx, _ = gmsh.model.mesh.get_nodes()
     nx = nx.reshape(-1,3)
     nx = _tools.project_points(nx, input_srs, output_srs)
@@ -287,7 +292,7 @@ def _reproject(input_srs, output_srs):
 
 def mesh(domain: _geometry.Domain, filename: str,
          mesh_size: _geometry.MeshSizeCallback,
-         version: float = 4.0,
+         version: float = 4.1,
          intermediate_file_name: str = None,
          smoothness=0.3,
          output_srs: _tools.osr.SpatialReference = None) -> None:
@@ -328,6 +333,10 @@ def mesh(domain: _geometry.Domain, filename: str,
         gmsh.model.removeEntities(rm, True)
     if output_srs is not None:
         _reproject(domain._projection, output_srs)
+    else:
+        output_srs = domain._projection
+    if output_srs is not None:
+        gmsh.model.set_attribute("Projection", ["WKT",output_srs.ExportToWkt()])
 
     _tools.log("Write \"{}\" (msh version {})".format(filename, version))
     gmsh.option.setNumber("Mesh.MshFileVersion", version)
@@ -339,12 +348,12 @@ def reproject(input_filename : str,
               input_srs : _tools.osr.SpatialReference,
               output_filename : str,
               output_srs : _tools.osr.SpatialReference,
-              output_version: float = 4.0):
+              output_version: float = 4.1):
     """ Change the coordinate of an existing mesh.
 
     Args:
         input_filename: input mesh file (any format readable by gmsh).
-        input_srs : coordinate system of the input mesh
+        input_srs : coordinate system of the input mesh. If None, the model projection is used.
         output_filename: output mesh file (.msh)
         output_srs : coordinate system of the output file (if None, the
             coordinate system of the domain is used).
@@ -354,6 +363,8 @@ def reproject(input_filename : str,
     gmsh.open(input_filename)
     _reproject(input_srs, output_srs)
     gmsh.option.setNumber("Mesh.MshFileVersion", output_version)
+    if output_srs is not None:
+        gmsh.model.set_attribute("Projection", ["WKT",output_srs.ExportToWkt()])
     gmsh.write(output_filename)
     gmsh.model.remove()
 
@@ -368,7 +379,7 @@ def convert_to_gis(input_filename: str,
             a .msh file)
         projection: the projection assigned to the output layer, mesh
             files do not store any projection so neither checks nor
-            re-projections are performed.
+            re-projections are performed (if none mesh projection will be used).
         output_filename : shape file (.shp) or geopackage (.gpkg) file
     """
     _tools.log("Convert \"{}\" into \"{}\"".format(input_filename,
@@ -384,6 +395,11 @@ def convert_to_gis(input_filename: str,
     if _tools.os.path.exists(output_filename):
         shpdriver.DeleteDataSource(output_filename)
     out_data_source = shpdriver.CreateDataSource(output_filename)
+    if projection == None:
+        p = gmsh.model.get_attribute("Projection")
+        if len(p) == 2 and p[0] == "WKT":
+            projection = _tools.osr.SpatialReference()
+            projection.ImportFromWkt(p[1])
     out_layer = out_data_source.CreateLayer(output_filename,
                                             geom_type=_tools.ogr.wkbPolygon,
                                             srs=projection)

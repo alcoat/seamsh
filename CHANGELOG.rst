@@ -1,5 +1,11 @@
 Changes
 =======
+
+seamsh 0.4.7
+------------
+* write WKT projection as gmsh model attribute
+* default msh output version set to 4.1
+
 seamsh 0.4.6
 ------------
 * License files in source package

@@ -104,10 +104,10 @@ output_srs.ImportFromProj4("+proj=latlon +ellps=WGS84")
 seamsh.gmsh.mesh(domain, "gis_mesh.msh", mesh_size,
                  intermediate_file_name="debug", output_srs=output_srs)
 
-#seamsh.gmsh.reproject("gis_mesh.msh", domain_srs, "gis_mesh_lonlat.msh", output_srs)
+seamsh.gmsh.reproject("gis_mesh.msh", None, "gis_mesh_lonlat.msh", output_srs)
 
 # %%
 # The gmsh.convert_to_gis function can be used to convert a gmsh .msh file
 # into a shape file or into a geo package file.
 
-seamsh.gmsh.convert_to_gis("gis_mesh.msh", output_srs, "gis_mesh.gpkg")
+seamsh.gmsh.convert_to_gis("gis_mesh.msh", None, "gis_mesh.gpkg")
