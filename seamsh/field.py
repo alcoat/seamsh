@@ -147,7 +147,7 @@ class Inpoly:
                 ptsid = []
                 for lid, o in ll :
                     l = domain._curves[lid]
-                    ptsid.extend(l.pointsid if o else np.flip(l.pointsid))
+                    ptsid.extend(l.pointsid if o else _tools.np.flip(l.pointsid))
                 assert(ptsid[-1] == ptsid[0])
                 ptsid = ptsid[:-1]
                 pts = domain._points[ptsid]
