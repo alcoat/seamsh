@@ -1,6 +1,10 @@
 Changes
 =======
 
+seamsh 0.4.8
+------------
+* numpy 1.24 compatibility (np.bool -> bool)
+
 seamsh 0.4.7
 ------------
 * write WKT projection as gmsh model attribute

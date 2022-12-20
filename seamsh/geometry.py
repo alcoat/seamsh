@@ -173,7 +173,7 @@ class Domain:
             i1 = 0 if p1[0][0] == -1 else 1
             p1[i1][0] = icurve
             p1[i1][1] = 1
-        touched = _tools.np.full((len(self._curves)), False, _tools.np.bool)
+        touched = _tools.np.full((len(self._curves)), False, bool)
         self._curveloops = []
         try:
             for i, _ in enumerate(self._curves):
