@@ -143,15 +143,15 @@ class Inpoly:
         domain._build_topology()
         self._area = []
         for ll in domain._curveloops:
-            if (tags is None) or (ll.tag in tags):
-                ptsid = []
-                for lid, o in ll :
-                    l = domain._curves[lid]
+            for lid, o in ll:
+                l = domain._curves[lid]
+                if (tags is None) or (l.tag in tags):
+                    ptsid = []
                     ptsid.extend(l.pointsid if o else _tools.np.flip(l.pointsid))
-                assert(ptsid[-1] == ptsid[0])
-                ptsid = ptsid[:-1]
-                pts = domain._points[ptsid]
-                self._area.append(_tools.shapely.geometry.Polygon(pts))
+                    assert(ptsid[-1] == ptsid[0])
+                    ptsid = ptsid[:-1]
+                    pts = domain._points[ptsid]
+                    self._area.append(_tools.shapely.geometry.Polygon(pts))
 
     def __call__(self, x: _tools.np.ndarray,
                  projection: _tools.osr.SpatialReference
