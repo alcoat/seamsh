@@ -1,6 +1,10 @@
 Changes
 =======
 
+seamsh 0.4.9
+------------
+* add transifinite curves (physical lines with prescribed number of elements)
+
 seamsh 0.4.8
 ------------
 * numpy 1.24 compatibility (np.bool -> bool)

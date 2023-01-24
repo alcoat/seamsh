@@ -295,7 +295,9 @@ def mesh(domain: _geometry.Domain, filename: str,
          version: float = 4.1,
          intermediate_file_name: str = None,
          smoothness=0.3,
-         output_srs: _tools.osr.SpatialReference = None) -> None:
+         output_srs: _tools.osr.SpatialReference = None,
+         transfinite_curves: dict = {}
+         ) -> None:
     """ Calls gmsh to generate a mesh from a geometry and a mesh size callback
 
     Args:
@@ -311,11 +313,18 @@ def mesh(domain: _geometry.Domain, filename: str,
             is valid but a value in the range [0.1,0.5] is recommended.
         output_srs : coordinate system of the output file (if None, the
             coordinate system of the domain is used).
+        tranfinite_curves : dict(str, int) prescribe a fixed number of mesh getElements
+            on curves with given physical tag.
     """
     gmsh.model.add(str(_tools.uuid.uuid4()))
     _tools.log("Generate mesh", True)
     domain._build_topology()
     _create_gmsh_geometry(domain)
+    for dim, tag in gmsh.model.get_physical_groups(1):
+        pname = gmsh.model.getPhysicalName(dim, tag)
+        if pname in transfinite_curves:
+            for etag in gmsh.model.getEntitiesForPhysicalGroup(dim, tag):
+                gmsh.model.mesh.set_transfinite_curve(etag, transfinite_curves[pname])
     if smoothness > 0:
         _mesh_bgrid(domain, mesh_size, smoothness)
     else:
