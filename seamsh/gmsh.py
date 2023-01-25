@@ -23,7 +23,7 @@ from . import geometry as _geometry
 from . import _tools
 __all__ = ["mesh", "convert_to_gis", "reproject"]
 
-if gmsh.option.getNumber("General.Terminal") == 0.0:
+if not gmsh.is_initialized():
     gmsh.initialize()
     gmsh.option.setNumber("General.Verbosity", 2)
 
