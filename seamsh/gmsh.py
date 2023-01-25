@@ -523,6 +523,116 @@ def convert_to_ugrid_mesh_file(input_filename: str,
 
     gmsh.model.remove()
 
+
+def merge_meshes(filename_orig:str, filename_dest:str, filename_out:str, seamlines:dict): 
+    """ Merge two meshes. No coordinate conversion are done. Projection
+        should be identical on both meshes. 
+
+    Args:
+        filename_orig : any mesh file readable by gmsh (typically
+            a .msh file)
+        filename_dest : any mesh file readable by gmsh (typically
+            a .msh file).
+        filename_out : any mesh file writable by gmsh (typically
+            a .msh file)
+        seamlines : dictionary of physicals tag of matching lines 
+            from orig mesh to dest mesh. There should be the same
+            number of nodes on both side. Each node of orig will
+            be mapped to its closest node on dest.
+    """
+    gmsh.open(filename_dest)
+    model_dest = gmsh.model.get_current()
+    itag = gmsh.model.mesh.get_max_node_tag()
+    gmsh.open(filename_orig)
+    model_orig = gmsh.model.get_current()
+
+    entitymap = {}
+    nodemap = {}
+    ignoreentities = []
+
+    for tagfrom, tagto in seamlines.items():
+        gmsh.model.set_current(model_dest)
+        for d,i in gmsh.model.get_physical_groups(1):
+            if gmsh.model.get_physical_name(1, i) == tagto:
+                n = []
+                x = []
+                for ie in gmsh.model.get_entities_for_physical_group(1, i):
+                    n_, x_, _ = gmsh.model.mesh.get_nodes(1, ie, True, False)
+                    n.append(n_)
+                    x.append(x_.reshape(-1,3))
+                nfrom = _tools.np.hstack(n)
+                xfrom = _tools.np.vstack(x)
+
+        gmsh.model.set_current(model_orig)
+        for d, i in gmsh.model.get_physical_groups(1):
+            if gmsh.model.get_physical_name(1, i) == tagfrom:
+                n = []
+                x = []
+                for ie in gmsh.model.get_entities_for_physical_group(1, i):
+                    ignoreentities.append((1,ie))
+                    n_, x_, _ = gmsh.model.mesh.get_nodes(1, ie, True, False)
+                    n.append(n_)
+                    x.append(x_.reshape(-1,3))
+                    for ip in gmsh.model.get_boundary([(1,ie)]):
+                        ignoreentities.append(ip)
+                nto = _tools.np.hstack(n)
+                xto = _tools.np.vstack(x)
+
+        try:
+            assert(nfrom.size == nto.size)
+            tree = _tools.cKDTree(xfrom)
+            nmap = nfrom[tree.query(xto)[1]]
+            _, count = _tools.np.unique(nmap,return_counts=True)
+            assert (_tools.np.min(count) == 1 and  _tools.np.max(count) == 1)
+        except:
+            raise ValueError(f"Nodes do not match for tags {tagfrom}, {tagto}")
+        for i,j in zip(nto, nmap):
+            nodemap[i] = j
+
+    for dim in range(4):
+        gmsh.model.set_current(model_orig)
+        for dim, tag in gmsh.model.get_entities(dim):
+            gmsh.model.set_current(model_orig)
+            ntag, ncoord, npcoord = gmsh.model.mesh.get_nodes(dim, tag)
+            etypes, etags, enodes = gmsh.model.mesh.get_elements(dim, tag)
+            keep = list(t not in nodemap for t in ntag)
+            n = _tools.np.sum(keep)
+            dntag = _tools.np.uint64(itag)+_tools.np.arange(n, dtype=ntag.dtype)+1
+            itag += n
+            if (dim, tag) in ignoreentities:
+                continue
+            if len(dntag) == 0 and len(enodes) == 0:
+                continue
+            gmsh.model.set_current(model_dest)
+            dtag = gmsh.model.add_discrete_entity(dim)
+            entitymap[(dim, tag)] = dtag
+            gmsh.model.mesh.add_nodes(dim, dtag, dntag, ncoord.reshape(-1,3)[keep].reshape(-1),
+                                      npcoord.reshape(-1,dim)[keep].reshape(-1) if npcoord.size !=
+                                      0 else [])
+            for t0, t1 in zip(ntag[keep], dntag):
+                nodemap[t0] = t1 
+            dntag = list(list(nodemap[n] for n in l) for l in enodes)
+            for et, dnt in zip (etypes, dntag):
+                gmsh.model.mesh.add_elements_by_type(dtag, et, [], dnt)
+
+    gmsh.model.set_current(model_orig)
+    for dim, tag in gmsh.model.get_physical_groups():
+        gmsh.model.set_current(model_orig)
+        name = gmsh.model.get_physical_name(dim, tag)
+        oe = []
+        for ie in gmsh.model.get_entities_for_physical_group(dim, tag):
+            if (dim, ie) in entitymap:
+                oe.append(entitymap[(dim, ie)])
+        if len(oe) != 0:
+            gmsh.model.set_current(model_dest)
+            gmsh.model.add_physical_group(dim, oe, name=name)
+
+    gmsh.model.set_current(model_orig)
+    gmsh.model.remove()
+    gmsh.write(filename_out)
+    gmsh.model.set_current(model_dest)
+    gmsh.model.remove()
+
 @_tools.atexit.register
 def _finalize():
     gmsh.finalize()
