@@ -2,7 +2,7 @@ Changes
 =======
 
 seamsh 0.4.10
-------------
+-------------
 * add gmsh.merge_meshes
 * add transifinite curves (physical lines with prescribed number of elements)
 * avoid gmsh initalization error message
