@@ -1,6 +1,10 @@
 Changes
 =======
 
+seamsh 0.4.11
+-------------
+* gmsh.merge_meshes : topological reconnection instead on coordinate based
+
 seamsh 0.4.10
 -------------
 * add gmsh.merge_meshes
