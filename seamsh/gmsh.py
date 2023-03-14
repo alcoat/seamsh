@@ -540,6 +540,25 @@ def merge_meshes(filename_orig:str, filename_dest:str, filename_out:str, seamlin
             number of nodes on both side. Each node of orig will
             be mapped to its closest node on dest.
     """
+    def get_ordered_nodes_for_physical_line(model, ptag):
+        gmsh.model.set_current(model)
+        for d,i in gmsh.model.get_physical_groups(1):
+            if gmsh.model.get_physical_name(1, i) == ptag:
+                entities = gmsh.model.get_entities_for_physical_group(1, i)
+                if len(entities) != 1:
+                    raise ValueError("Multiple entities on physical tag {ptag} on mesh {model}")
+                n_, x_, _ = gmsh.model.mesh.get_nodes(1, entities[0], True, False)
+                x_ = x_.reshape(-1,3)
+                xmap = dict(zip(n_, x_))
+                etag, enodes = gmsh.model.mesh.get_elements_by_type(1, entities[0])
+                enodes = enodes.reshape(-1, 2)
+                nextn = dict((a,b) for (a,b) in enodes)
+                pfrom = gmsh.model.get_boundary([(1,entities[0])])[0][1]
+                points = [pfrom]
+                while points[-1] in nextn:
+                    points.append(nextn[points[-1]])
+                return entities[0], _tools.np.array(points, _tools.np.uint64), _tools.np.array(list(xmap[i] for i in points))
+        raise ValueError(f"Physical tag '{ptag}' not found in mesh '{model}'")
     gmsh.open(filename_dest)
     model_dest = gmsh.model.get_current()
     itag = gmsh.model.mesh.get_max_node_tag()
@@ -549,45 +568,18 @@ def merge_meshes(filename_orig:str, filename_dest:str, filename_out:str, seamlin
     entitymap = {}
     nodemap = {}
     ignoreentities = []
-
     for tagfrom, tagto in seamlines.items():
-        gmsh.model.set_current(model_dest)
-        for d,i in gmsh.model.get_physical_groups(1):
-            if gmsh.model.get_physical_name(1, i) == tagto:
-                n = []
-                x = []
-                for ie in gmsh.model.get_entities_for_physical_group(1, i):
-                    n_, x_, _ = gmsh.model.mesh.get_nodes(1, ie, True, False)
-                    n.append(n_)
-                    x.append(x_.reshape(-1,3))
-                nfrom = _tools.np.hstack(n)
-                xfrom = _tools.np.vstack(x)
-
-        gmsh.model.set_current(model_orig)
-        for d, i in gmsh.model.get_physical_groups(1):
-            if gmsh.model.get_physical_name(1, i) == tagfrom:
-                n = []
-                x = []
-                for ie in gmsh.model.get_entities_for_physical_group(1, i):
-                    ignoreentities.append((1,ie))
-                    n_, x_, _ = gmsh.model.mesh.get_nodes(1, ie, True, False)
-                    n.append(n_)
-                    x.append(x_.reshape(-1,3))
-                    for ip in gmsh.model.get_boundary([(1,ie)]):
-                        ignoreentities.append(ip)
-                nto = _tools.np.hstack(n)
-                xto = _tools.np.vstack(x)
-
-        try:
-            assert(nfrom.size == nto.size)
-            tree = _tools.cKDTree(xfrom)
-            nmap = nfrom[tree.query(xto)[1]]
-            _, count = _tools.np.unique(nmap,return_counts=True)
-            assert (_tools.np.min(count) == 1 and  _tools.np.max(count) == 1)
-        except:
+        ento, nodesto, xto = get_ordered_nodes_for_physical_line(model_dest, tagto)
+        entfrom, nodesfrom, xfrom = get_ordered_nodes_for_physical_line(model_orig, tagfrom)
+        if nodesto.size != nodesfrom.size :
             raise ValueError(f"Nodes do not match for tags {tagfrom}, {tagto}")
-        for i,j in zip(nto, nmap):
-            nodemap[i] = j
+        if  _tools.np.linalg.norm(xto-xfrom) >  _tools.np.linalg.norm(xto-xfrom[::-1]):
+            nodesto = nodesto[::-1]
+        ignoreentities.append((1, entfrom))
+        print("---")
+        for i, j in zip(nodesto, nodesfrom):
+            print(j,i)
+            nodemap[j] = i
 
     for dim in range(4):
         gmsh.model.set_current(model_orig)
