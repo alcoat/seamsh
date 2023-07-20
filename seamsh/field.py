@@ -100,6 +100,9 @@ class Raster:
         if int(_tools.gdal.__version__.split(".")[0]) >= 3:
             order = _tools.osr.OAMS_TRADITIONAL_GIS_ORDER
             self._projection.SetAxisMappingStrategy(order)
+        if self._projection.IsSame(_tools.osr.SpatialReference()):
+            msg = " !!! Raster used has no spatial reference !!!\n !!! Be sure to define one manually !!!\n"
+            _tools.log(msg)
 
     def __call__(self, x: _tools.np.ndarray,
                  projection: _tools.osr.SpatialReference
