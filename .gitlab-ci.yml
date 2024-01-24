@@ -58,15 +58,6 @@ seamshtest :
     - cd tests
     - python3 testshp.py 
 
-seamshtest-py36 :
-  image : immc/seamsh-valid-py36:v0.1
-  stage : test
-  script:
-    - pip3 install --user dist/*manylinux1_x86_64*
-    - export PYTHONPATH=$HOME/.local/lib/python3/dist-packages/gmsh-git-Linux64-sdk/lib/:$PYTHONPATH
-    - cd tests
-    - python3 testshp.py 
-
 pages:
   image : immc/seamsh-build:v0.9
   stage : deploy
