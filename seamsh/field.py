@@ -31,14 +31,17 @@ class Distance:
     """
 
     def __init__(self, domain: _Domain, sampling: float,
-                 tags: _tools.List[str] = None):
+                 tags: _tools.List[str] = None, projection: _tools.osr.SpatialReference = None):
         """
         Args:
             domain: a Domain object containing the set of curves
             sampling: the interval between two consecutive sampling points.
             tags: List of physical tags specifying the curve from the domain.
                 if None, all curves are taken into account.
+            projection: coordinates system used to search for nearest neighbours
+                if None, the domain projection is used.
         """
+        self._projection = domain._projection if projection is None else projection
         _tools.log("Create distance field", True)
         points = []
         msg = "Sampling features for distance computation"
@@ -51,7 +54,7 @@ class Distance:
         icurve = 0
         for curve in all_curves_iter:
             if (tags is None) or (curve.tag in tags):
-                points.append(_curve_sample(curve, size, domain._projection))
+                points.append(_curve_sample(curve, size, self._projection))
                 icurve += 1
                 progress.log("{} features sampled".format(icurve))
         for point in _tools.chain(domain._interior_points):
@@ -61,7 +64,6 @@ class Distance:
         points = _tools.np.vstack(points)
         _tools.log("Build KDTree with {} points".format(points.shape[0]))
         self._tree = _tools.cKDTree(points)
-        self._projection = domain._projection
 
     def __call__(self, x: _tools.np.ndarray,
                  projection: _tools.osr.SpatialReference
@@ -77,8 +79,8 @@ class Distance:
             The distance expressed in the domain unit. [n]
         """
         if not projection.IsSame(self._projection):
-            raise ValueError("incompatible projection")
-        x = x[:, :2]
+            x = _tools.project_points(x, projection, self._projection)
+        x = x[:, :self._projection.GetAxesCount()]
         return self._tree.query(x)[0]
 
 
