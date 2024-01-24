@@ -31,4 +31,6 @@ USER validator
 RUN pip3 install numpy
 RUN pip3 install -i https://gmsh.info/python-packages-dev-nox --force-reinstall --no-cache-dir gmsh
 RUN pip3 install gdal
+RUN pip3 install sphinx sphinx-rtd-theme sphinx-autodoc-typehints
+
 WORKDIR /home/validator
