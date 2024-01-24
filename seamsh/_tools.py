@@ -76,14 +76,14 @@ _transform_cache = {}
 
 
 def project_points(x, pfrom, pto):
-    x = np.asarray(x)[:, :2]
+    x = np.asarray(x)[:, :pfrom.GetAxesCount()]
     if not pfrom.IsSame(pto):
         trans = _transform_cache.get((pfrom, pto), None)
         if trans is None:
             trans = osr.CoordinateTransformation(pfrom, pto)
             _transform_cache[(pfrom, pto)] = trans
         x = trans.TransformPoints(x)
-        x = np.asarray(x)[:, :2]
+        x = np.asarray(x)[:, :pto.GetAxesCount()]
     return x
 
 

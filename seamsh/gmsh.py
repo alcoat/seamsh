@@ -46,11 +46,9 @@ def _gmsh_curve_geo(curve_type: _geometry.CurveType, pointsid):
 def _curve_sample_gmsh_tag(tag, lc, projection):
     bounds = gmsh.model.getParametrizationBounds(1, tag)
     xi = _tools.np.linspace(bounds[0][0], bounds[1][0], 5)
-    count = 0
     x = gmsh.model.getValue(1, tag, xi).reshape([-1, 3])
     size = lc(x, projection)
     while True:
-        count += 1
         dist = _tools.np.linalg.norm(x[1:, :]-x[:-1, :], axis=1)
         target = _tools.np.minimum(size[1:], size[:-1])
         if not _tools.np.any(target < dist):
@@ -76,13 +74,12 @@ class _lcproj():
         xlc = _tools.project_points(x, self.projection, projection)
         x2 = _tools.np.copy(x)
         eps = 1e-8
-        x2[:, 0] += eps
-        x2[:, 1] += eps
+        x2[:, :projection.GetAxesCount()] += eps
         xlc = _tools.project_points(x, self.projection, projection)
         xlc2 = _tools.project_points(x2, self.projection, projection)
         slc = self.lc(xlc, projection)
         enorm = _tools.np.hypot(eps, eps)
-        h = _tools.np.hypot(xlc2[:, 0]-xlc[:, 0], xlc2[:, 1]-xlc[:, 1])/enorm
+        h = _tools.np.linalg.norm(xlc2-xlc, axis=1)/enorm
         return slc/h
 
 
@@ -281,7 +278,7 @@ def _reproject(input_srs, output_srs):
     nx = nx.reshape(-1,3)
     nx = _tools.project_points(nx, input_srs, output_srs)
     for i,x in zip(ntags, nx):
-        gmsh.model.mesh.set_node(i, [x[0], x[1], 0], [])
+        gmsh.model.mesh.set_node(i, [x[0], x[1], x[2]], [])
     for _, tag in gmsh.model.get_entities(0):
         _, x, _ = gmsh.model.mesh.get_nodes(0, tag)
         if x.size == 0:
