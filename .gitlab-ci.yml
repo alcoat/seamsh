@@ -59,7 +59,7 @@ seamshtest :
     - python3 testshp.py 
 
 pages:
-  image : immc/seamsh-build:v0.9
+  image : immc/seamsh-valid:v0.4
   stage : deploy
   script:
     - pip3 install --user dist/*manylinux1_x86_64*
