@@ -74,6 +74,6 @@ setup(
         "Programming Language :: Python",
         "Topic :: Scientific/Engineering"
         ],
-    install_requires=["scipy","numpy","gdal","gmsh"],
+    install_requires=["scipy","numpy","gdal>=3.1.0","gmsh"],
     python_requires='>=3.6'
 )

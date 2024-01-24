@@ -18,7 +18,7 @@
 # along with this program (see COPYING file).  If not, 
 # see <http://www.gnu.org/licenses/>.
 
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 RUN apt update
 ENV DEBIAN_FRONTEND=noninteractive
