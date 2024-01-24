@@ -1,9 +1,15 @@
 Changes
 =======
 
+seamsh 0.4.12
+-------------
+* Add stereographic projection example
+* Distance field can use another projection than the projection of the domain
+* Allows for cartesian projection (i.e. no projection)
+
 seamsh 0.4.11
 -------------
-* gmsh.merge_meshes : topological reconnection instead on coordinate based
+* gmsh.merge_meshes : topological reconnection instead of coordinate based
 
 seamsh 0.4.10
 -------------
