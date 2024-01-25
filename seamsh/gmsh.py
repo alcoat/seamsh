@@ -293,7 +293,8 @@ def mesh(domain: _geometry.Domain, filename: str,
          intermediate_file_name: str = None,
          smoothness=0.3,
          output_srs: _tools.osr.SpatialReference = None,
-         transfinite_curves: dict = {}
+         transfinite_curves: dict = {},
+         quad: bool = False
          ) -> None:
     """ Calls gmsh to generate a mesh from a geometry and a mesh size callback
 
@@ -312,6 +313,9 @@ def mesh(domain: _geometry.Domain, filename: str,
             coordinate system of the domain is used).
         tranfinite_curves : dict(str, int) prescribe a fixed number of mesh getElements
             on curves with given physical tag.
+        quad: if True, generate quadrangles instead of triangles. This a achieved by 
+            generating a quad-dominant mesh and then splitting all elements (quads and 
+            triangles) into quads. So the resulting mesh size is half the prescribed one.
     """
     gmsh.model.add(str(_tools.uuid.uuid4()))
     _tools.log("Generate mesh", True)
@@ -322,10 +326,20 @@ def mesh(domain: _geometry.Domain, filename: str,
         if pname in transfinite_curves:
             for etag in gmsh.model.getEntitiesForPhysicalGroup(dim, tag):
                 gmsh.model.mesh.set_transfinite_curve(etag, transfinite_curves[pname])
+    if quad:
+        gmsh.option.setNumber("Mesh.RecombineAll", 1)
+        gmsh.option.setNumber("Mesh.RecombinationAlgorithm", 1)
+        gmsh.option.setNumber("Mesh.Algorithm", 8)
+
     if smoothness > 0:
         _mesh_bgrid(domain, mesh_size, smoothness)
     else:
         _mesh_successive(domain, mesh_size, intermediate_file_name)
+
+    if quad:
+        gmsh.option.setNumber("Mesh.SubdivisionAlgorithm", 1)
+        gmsh.option.setNumber("Mesh.SecondOrderLinear", 1)
+        gmsh.model.mesh.refine()
 
     # remove nodes that do not touch any triangle
     _, keepnodes = gmsh.model.mesh.getElementsByType(2)
