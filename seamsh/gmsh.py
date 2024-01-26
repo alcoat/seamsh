@@ -278,13 +278,21 @@ def _reproject(input_srs, output_srs):
     nx = nx.reshape(-1,3)
     nx = _tools.project_points(nx, input_srs, output_srs)
     for i,x in zip(ntags, nx):
-        gmsh.model.mesh.set_node(i, [x[0], x[1], x[2]], [])
+        if len(x) == 3:
+            gmsh.model.mesh.set_node(i, [x[0], x[1], x[2]], [])
+        else :
+            gmsh.model.mesh.set_node(i, [x[0], x[1], 0], [])
+
     for _, tag in gmsh.model.get_entities(0):
         _, x, _ = gmsh.model.mesh.get_nodes(0, tag)
         if x.size == 0:
             gmsh.model.remove_entities([(0,tag)])
         else:
-            gmsh.model.set_coordinates(tag, x[0], x[1], x[2])
+            if len(x) == 3:
+                gmsh.model.set_coordinates(tag, x[0], x[1], x[2])
+            else:
+                gmsh.model.set_coordinates(tag, x[0], x[1], 0)
+
 
 
 def mesh(domain: _geometry.Domain, filename: str,

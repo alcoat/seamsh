@@ -60,6 +60,7 @@ coarse = seamsh.geometry.coarsen_boundaries(domain, (0, 0), domain_srs, mesh_siz
 
 # %%
 # Eventually the mesh is generated.
-# The mesh is saved in cartesian coordinates
+# The mesh is saved both in stereographic and cartesian coordinates
 
-seamsh.gmsh.mesh(coarse, "natural_earth.msh", mesh_size, output_srs=cart_srs)
+seamsh.gmsh.mesh(coarse, "natural_earth.msh", mesh_size, output_srs=domain_srs)
+seamsh.gmsh.reproject("natural_earth.msh", domain_srs, "natural_earth_cart.msh", cart_srs)
