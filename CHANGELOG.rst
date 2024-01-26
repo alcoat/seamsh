@@ -1,6 +1,10 @@
 Changes
 =======
 
+seamsh 0.4.13
+-------------
+* fix bug for 2d coordinates reprojection introduced in 0.4.12
+
 seamsh 0.4.12
 -------------
 * Add stereographic projection example
