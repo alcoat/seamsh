@@ -166,6 +166,7 @@ def _mesh_bgrid(domain: _geometry.Domain,
         edges = np.r_[tri[:, [0, 1]], tri[:, [1, 2]], tri[:, [2, 0]]]
         edges.sort(axis=1)
         shift = 2**32
+        edges = edges.astype(np.uint64)
         ekey = np.unique(edges[:, 0]*shift+edges[:, 1])
         edges = np.c_[ekey//shift, ekey % shift]
         dedges = xy[edges[:, 0]]-xy[edges[:, 1]]

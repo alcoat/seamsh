@@ -1,6 +1,10 @@
 Changes
 =======
 
+seamsh 0.4.14
+-------------
+* fig bug with newer versions of numpy (integer casted to int32 instead of int64)
+
 seamsh 0.4.13
 -------------
 * fix bug for 2d coordinates reprojection introduced in 0.4.12
