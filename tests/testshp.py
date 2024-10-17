@@ -22,7 +22,7 @@ import os
 import urllib.request
 import tarfile
 if not os.path.isdir("data") :
-    urllib.request.urlretrieve("https://nextcloud.cism.ucl.ac.be/s/L2tTqQi5MMk9dqT/download/data-test-1.tar.gz", "data-test-1.tar.gz")
+    urllib.request.urlretrieve("https://nextcloud.cism.ucl.ac.be/s/e7daeWsMpormjpz/download/data-test-1.tar.gz", "data-test-1.tar.gz")
     f = tarfile.open("data-test-1.tar.gz","r:*")
     f.extractall()
 
