@@ -429,7 +429,7 @@ def convert_to_gis(input_filename: str,
         if len(p) == 2 and p[0] == "WKT":
             projection = _tools.osr.SpatialReference()
             projection.ImportFromWkt(p[1])
-    out_layer = out_data_source.CreateLayer(output_filename,
+    out_layer = out_data_source.CreateLayer("mesh",
                                             geom_type=_tools.ogr.wkbPolygon,
                                             srs=projection)
     out_layer.CreateField(_tools.ogr.FieldDefn("id", _tools.ogr.OFTInteger))
