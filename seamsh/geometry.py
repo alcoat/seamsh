@@ -396,6 +396,7 @@ def coarsen_boundaries(domain: Domain, x0: _tools.Tuple[float, float],
     # avoid cocircular points
     eps = (_tools.np.max(x, axis=0, keepdims=True) -
            _tools.np.min(x, axis=0, keepdims=True))*1e-8
+    _tools.np.random.seed(0)
     x = x + _tools.np.random.random(x.shape)*eps
     _tools.log("Delaunay mesh of sampled points")
     tri = _tools.Delaunay(x)
