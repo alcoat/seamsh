@@ -1,5 +1,9 @@
 Changes
 =======
+seamsh 0.4.15
+-------------
+* set random seed for reproducibility
+* set layer name to "mesh" when exporting to gpkg/shapefile instead of the file name to avoid incompatible special characters
 
 seamsh 0.4.14
 -------------
