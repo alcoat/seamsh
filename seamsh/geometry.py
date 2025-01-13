@@ -421,11 +421,11 @@ def coarsen_boundaries(domain: Domain, x0: _tools.Tuple[float, float],
     # xbuf = _tools.c.cast(p_xo, xptr).contents
     xtype = _tools.c.POINTER(n_xo.value*2*_tools.c.c_double)
     xbuf = _tools.c.cast(p_xo, xtype).contents
-    xo = _tools.np.ctypeslib.frombuffer(xbuf, dtype=_tools.np.float64)
+    xo = _tools.npfrombuffer(xbuf, dtype=_tools.np.float64)
     xo = xo.reshape([-1, 2]).copy()
     _tools.lib.libcfree(p_xo)
     linesbuf = _tools.c.cast(p_l, _tools.c.POINTER(n_l.value*_tools.c.c_int))
-    lines = _tools.np.ctypeslib.frombuffer(linesbuf.contents,
+    lines = _tools.npfrombuffer(linesbuf.contents,
                                            dtype=_tools.np.int32)
     odomain = Domain(domain._projection)
     breaks = _tools.np.where(lines == -1)[0]

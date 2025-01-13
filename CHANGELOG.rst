@@ -1,5 +1,9 @@
 Changes
 =======
+seamsh 0.4.16
+-------------
+* np.frombuffer for newer numpy versions
+
 seamsh 0.4.15
 -------------
 * set random seed for reproducibility

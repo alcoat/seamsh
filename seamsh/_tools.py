@@ -92,6 +92,11 @@ libpath = os.path.join(libdir, "libseamsh.so")
 
 lib = c.CDLL(libpath)
 
+def npfrombuffer(buf, dtype):
+    if hasattr(np, frombuffer):
+        return np.frombuffer(buf, dtype)
+    else:
+        return np.ctypeslib.frombuffer(buf, dtype)
 
 def np2c(a, dtype=np.float64):
     tmp = np.require(a, dtype, "C")
