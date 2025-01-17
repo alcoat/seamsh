@@ -1,5 +1,9 @@
 Changes
 =======
+seamsh 0.4.17
+-------------
+* fix
+
 seamsh 0.4.16
 -------------
 * np.frombuffer for newer numpy versions
